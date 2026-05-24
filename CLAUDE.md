@@ -45,6 +45,62 @@ Before committing, all of the following MUST pass:
 - Zero unresolved `TODO(<FIELD_NAME>)` markers in code that ships to production
 - Any abstraction beyond the immediate task is justified in a comment
 
+## Tech Stack
+
+| Concern | Choice |
+|---|---|
+| Framework | React 19 + TypeScript, Vite 8 |
+| UI | Mantine v7 (`@mantine/core`, `@mantine/hooks`, `@mantine/form`) |
+| Forms | `mantine-form-zod-resolver` + Zod v3 |
+| Auth | Google Identity Services (GIS) token client |
+| Data | Google Sheets REST API |
+| Testing | Vitest + Testing Library |
+| Deploy | GitHub Pages (`npm run deploy`) |
+
+## Commands
+
+```
+npm run dev        # start dev server
+npm run build      # type-check + production build
+npm run lint       # ESLint
+npm run test       # Vitest watch mode
+npm run test:run   # Vitest single run (used in CI / pre-commit checks)
+npm run deploy     # build then push dist/ to gh-pages branch
+```
+
+## Source Layout
+
+```
+src/
+  data/emotions.ts          bundled emotion tree + resolveColor helper
+  models/moodEntry.ts       MoodEntry type, Zod schema, factory, row helpers
+  services/googleSheets.ts  readEntries, appendEntry, initSheet, createSpreadsheet
+  hooks/useGoogleAuth.ts    GIS token client; silent restore; proactive refresh
+  hooks/useEntries.ts       load entries + addEntry; consumes Auth + EntriesContext
+  context/AuthContext.tsx   auth state machine (idle|restoring|authorising|authorised|error)
+  context/EntriesContext.tsx entries state machine (idle|loading|loaded|saving|error)
+  lib/storage.ts            localStorage helpers; keys: mood-journal-spreadsheet:v1, mood-journal-session-hint:v1
+  components/
+    SetupScreen.tsx         sign-in gate, Drive Picker, create/connect sheet
+    LogView/                3-step emotion picker + note + date + save
+    HistoryView/            reverse-chronological entry list
+  types/google.d.ts         minimal Window augmentation for GIS + Drive Picker
+tests/
+  unit/models/              moodEntry pure function tests
+  unit/lib/                 storage localStorage tests
+  integration/              googleSheets fetch-mock tests
+```
+
+## Environment Variables
+
+Copy `.env.example` to `.env.local` and fill in:
+- `VITE_GOOGLE_CLIENT_ID` — OAuth 2.0 client ID from Google Cloud Console
+- `VITE_GOOGLE_API_KEY` — API key for the Drive Picker UI
+
+## Reference
+
+A structurally identical app (`arc`) lives at `/Users/andyh/Claude/arc`. When adapting patterns — auth flow, Sheets service, test structure — read that project first.
+
 ## Git commits
 
 Never include AI attribution in commit messages. Do not add `Co-Authored-By`, `Generated-by`, or any other trailer or note that identifies an AI tool as a contributor.
