@@ -2,7 +2,6 @@ import { useEffect, useCallback } from 'react'
 import { useAuth } from '@/context/AuthContext'
 
 const SCOPE = [
-  'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/drive.file',
 ].join(' ')
 const GIS_SRC = 'https://accounts.google.com/gsi/client'
