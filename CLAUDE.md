@@ -73,10 +73,10 @@ npm run deploy     # build then push dist/ to gh-pages branch
 ```
 src/
   data/emotions.ts          bundled emotion tree + resolveColor helper
-  models/moodEntry.ts       MoodEntry type, Zod schema, factory, row helpers
+  models/moodEntry.ts       MoodEntry type (incl. local-only syncStatus field), Zod schema, factory, row helpers
   services/googleSheets.ts  readEntries, appendEntry, initSheet, createSpreadsheet
   hooks/useGoogleAuth.ts    GIS token client; silent restore; proactive refresh
-  hooks/useEntries.ts       background Sheets sync + addEntry; consumes Auth + EntriesContext
+  hooks/useEntries.ts       background Sheets sync + addEntry; pending→synced lifecycle; consumes Auth + EntriesContext
   context/AuthContext.tsx   auth state machine (idle|restoring|authorising|authorised|error)
   context/EntriesContext.tsx entries state machine; loads from localStorage on mount
   lib/crypto.ts             AES-GCM encrypt/decrypt; key stored in IndexedDB
