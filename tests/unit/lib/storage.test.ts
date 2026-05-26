@@ -10,7 +10,7 @@ import {
   saveLocalEntries,
   clearLocalEntries,
 } from '../../../src/lib/storage'
-import { resetKeyForTesting } from '../../../src/lib/crypto'
+import { encryptString, resetKeyForTesting } from '../../../src/lib/crypto'
 import type { MoodEntry } from '../../../src/models/moodEntry'
 
 describe('storage — SheetRef', () => {
@@ -86,6 +86,7 @@ const SAMPLE_ENTRY: MoodEntry = {
   level3: null,
   note: 'Great day',
   createdAt: '2026-05-26T10:00:00.000Z',
+  syncStatus: 'synced',
 }
 
 describe('storage — LocalEntries', () => {
@@ -129,5 +130,16 @@ describe('storage — LocalEntries', () => {
     await saveLocalEntries([SAMPLE_ENTRY])
     clearLocalEntries()
     expect(await loadLocalEntries()).toEqual([])
+  })
+
+  it('migrates entries without syncStatus to pending', async () => {
+    // Simulate data written by an older version that had no syncStatus field
+    const legacy = { ...SAMPLE_ENTRY }
+    // @ts-expect-error intentionally removing the field to simulate legacy data
+    delete legacy.syncStatus
+    const encrypted = await encryptString(JSON.stringify([legacy]))
+    localStorage.setItem('mood-journal-entries:v1', encrypted)
+    const loaded = await loadLocalEntries()
+    expect(loaded[0].syncStatus).toBe('pending')
   })
 })

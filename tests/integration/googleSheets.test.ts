@@ -46,6 +46,7 @@ describe('readEntries', () => {
     expect(entries[0].note).toBe('Great day')
     expect(entries[0].date).toBe('2026-05-24')
     expect(entries[0].createdAt).toBe('2026-05-24T10:00:00.000Z')
+    expect(entries[0].syncStatus).toBe('synced')
   })
 
   it('coerces empty strings to null for optional fields', async () => {
@@ -126,6 +127,7 @@ describe('appendEntry', () => {
     level3: 'Joyful',
     note: 'Great day',
     createdAt: '2026-05-24T10:00:00.000Z',
+    syncStatus: 'pending',
   }
 
   it('calls fetch with correct URL, Authorization header, and 7-element row payload', async () => {
@@ -164,6 +166,7 @@ describe('appendEntry', () => {
       id: 'uuid-2', date: '2026-05-24', level1: 'Bad',
       level2: null, level3: null, note: null,
       createdAt: '2026-05-24T10:00:00.000Z',
+      syncStatus: 'pending',
     }
     await appendEntry(SPREADSHEET_ID, ACCESS_TOKEN, minimalEntry)
 

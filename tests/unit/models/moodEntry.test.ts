@@ -48,6 +48,10 @@ describe('createMoodEntry', () => {
     expect(entry.level3).toBeNull()
     expect(entry.note).toBeNull()
   })
+
+  it('sets syncStatus to pending', () => {
+    expect(createMoodEntry(base).syncStatus).toBe('pending')
+  })
 })
 
 describe('moodEntryFieldsSchema', () => {
@@ -117,6 +121,11 @@ describe('rowToMoodEntry', () => {
     expect(entry.level3).toBeNull()
     expect(entry.note).toBeNull()
   })
+
+  it('sets syncStatus to synced', () => {
+    const row = ['id-1', '2026-05-24', 'Happy', '', '', '', '2026-05-24T10:00:00.000Z']
+    expect(rowToMoodEntry(row).syncStatus).toBe('synced')
+  })
 })
 
 describe('moodEntryToRow', () => {
@@ -129,6 +138,7 @@ describe('moodEntryToRow', () => {
       level3: 'Joyful',
       note: 'Great day',
       createdAt: '2026-05-24T10:00:00.000Z',
+      syncStatus: 'synced',
     }
     expect(moodEntryToRow(entry)).toEqual([
       'id-1', '2026-05-24', 'Happy', 'Content', 'Joyful', 'Great day', '2026-05-24T10:00:00.000Z',
@@ -144,6 +154,7 @@ describe('moodEntryToRow', () => {
       level3: null,
       note: null,
       createdAt: '2026-05-24T10:00:00.000Z',
+      syncStatus: 'pending',
     }
     const row = moodEntryToRow(entry)
     expect(row[3]).toBe('')
@@ -155,34 +166,34 @@ describe('moodEntryToRow', () => {
 
 describe('deepestLabel', () => {
   it('returns level3 when present', () => {
-    const entry: MoodEntry = { id: '', date: '', level1: 'Fearful', level2: 'Insecure', level3: 'Inferior', note: null, createdAt: '' }
+    const entry: MoodEntry = { id: '', date: '', level1: 'Fearful', level2: 'Insecure', level3: 'Inferior', note: null, createdAt: '', syncStatus: 'synced' }
     expect(deepestLabel(entry)).toBe('Inferior')
   })
 
   it('falls back to level2 when level3 is null', () => {
-    const entry: MoodEntry = { id: '', date: '', level1: 'Fearful', level2: 'Insecure', level3: null, note: null, createdAt: '' }
+    const entry: MoodEntry = { id: '', date: '', level1: 'Fearful', level2: 'Insecure', level3: null, note: null, createdAt: '', syncStatus: 'synced' }
     expect(deepestLabel(entry)).toBe('Insecure')
   })
 
   it('falls back to level1 when level2 and level3 are null', () => {
-    const entry: MoodEntry = { id: '', date: '', level1: 'Happy', level2: null, level3: null, note: null, createdAt: '' }
+    const entry: MoodEntry = { id: '', date: '', level1: 'Happy', level2: null, level3: null, note: null, createdAt: '', syncStatus: 'synced' }
     expect(deepestLabel(entry)).toBe('Happy')
   })
 })
 
 describe('breadcrumb', () => {
   it('joins non-null levels with › separator', () => {
-    const entry: MoodEntry = { id: '', date: '', level1: 'Fearful', level2: 'Insecure', level3: 'Inferior', note: null, createdAt: '' }
+    const entry: MoodEntry = { id: '', date: '', level1: 'Fearful', level2: 'Insecure', level3: 'Inferior', note: null, createdAt: '', syncStatus: 'synced' }
     expect(breadcrumb(entry)).toBe('Fearful › Insecure › Inferior')
   })
 
   it('omits null levels', () => {
-    const entry: MoodEntry = { id: '', date: '', level1: 'Happy', level2: 'Content', level3: null, note: null, createdAt: '' }
+    const entry: MoodEntry = { id: '', date: '', level1: 'Happy', level2: 'Content', level3: null, note: null, createdAt: '', syncStatus: 'synced' }
     expect(breadcrumb(entry)).toBe('Happy › Content')
   })
 
   it('returns just level1 when others are null', () => {
-    const entry: MoodEntry = { id: '', date: '', level1: 'Bad', level2: null, level3: null, note: null, createdAt: '' }
+    const entry: MoodEntry = { id: '', date: '', level1: 'Bad', level2: null, level3: null, note: null, createdAt: '', syncStatus: 'synced' }
     expect(breadcrumb(entry)).toBe('Bad')
   })
 })

@@ -8,6 +8,8 @@ export interface MoodEntry {
   level3: string | null
   note: string | null
   createdAt: string
+  // local-only: not written to Google Sheets
+  syncStatus: 'pending' | 'synced'
 }
 
 export const moodEntryFieldsSchema = z.object({
@@ -29,6 +31,7 @@ export function createMoodEntry(fields: MoodEntryFields): MoodEntry {
     level3: fields.level3 ?? null,
     note: fields.note ?? null,
     createdAt: new Date().toISOString(),
+    syncStatus: 'pending',
   }
 }
 
@@ -41,6 +44,7 @@ export function rowToMoodEntry(row: string[]): MoodEntry {
     level3: row[4] || null,
     note: row[5] || null,
     createdAt: row[6] ?? '',
+    syncStatus: 'synced',
   }
 }
 

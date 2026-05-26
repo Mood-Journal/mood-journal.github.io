@@ -43,19 +43,32 @@ export function useEntries() {
       .then(async (sheetsEntries) => {
         const localEntries = await loadLocalEntries()
         const sheetsIds = new Set(sheetsEntries.map((e) => e.id))
-        const localOnly = localEntries.filter(
-          (e) => !sheetsIds.has(e.id) && !inFlightIds.current.has(e.id)
+
+        // Pending entries not yet in Sheets and not currently being pushed by addEntry
+        const pendingToSync = localEntries.filter(
+          (e) => e.syncStatus !== 'synced' && !sheetsIds.has(e.id) && !inFlightIds.current.has(e.id)
         )
 
-        // push any local-only (offline) entries up to Sheets
+        let pushedIds = new Set<string>()
         const token = authState.accessToken
-        if (localOnly.length > 0 && token) {
-          await Promise.allSettled(
-            localOnly.map((e) => appendEntry(spreadsheetId, token, e))
+        if (pendingToSync.length > 0 && token) {
+          const results = await Promise.allSettled(
+            pendingToSync.map((e) => appendEntry(spreadsheetId, token, e))
+          )
+          pushedIds = new Set(
+            pendingToSync
+              .filter((_, i) => results[i].status === 'fulfilled')
+              .map((e) => e.id)
           )
         }
 
-        const merged = mergeById(sheetsEntries, localOnly)
+        // Retain entries that are still pending (push failed or in-flight via addEntry).
+        // Synced entries absent from Sheets are dropped — they were deleted remotely.
+        const retainLocal = localEntries.filter(
+          (e) => e.syncStatus !== 'synced' && !sheetsIds.has(e.id) && !pushedIds.has(e.id)
+        )
+
+        const merged = mergeById(sheetsEntries, retainLocal)
         await saveLocalEntries(merged)
         dispatch({ type: 'SET_ENTRIES', payload: merged })
       })
@@ -88,7 +101,11 @@ export function useEntries() {
       dispatch({ type: 'SET_SAVING' })
       try {
         await appendEntry(spreadsheetId, accessToken, entry)
-        dispatch({ type: 'SET_ENTRIES', payload: newItems })
+        const syncedItems = newItems.map((e) =>
+          e.id === entry.id ? { ...e, syncStatus: 'synced' as const } : e
+        )
+        dispatch({ type: 'SET_ENTRIES', payload: syncedItems })
+        await saveLocalEntries(syncedItems)
       } catch (err: unknown) {
         let message = 'Saved locally. Could not sync to Drive — try again later.'
         if (err instanceof Response) {

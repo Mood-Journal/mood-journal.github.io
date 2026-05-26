@@ -74,7 +74,11 @@ export async function loadLocalEntries(): Promise<MoodEntry[]> {
     const decrypted = await decryptString(raw)
     const parsed = JSON.parse(decrypted) as unknown
     if (!Array.isArray(parsed)) return []
-    return parsed as MoodEntry[]
+    // Entries written before syncStatus was introduced default to 'pending' so
+    // the next sync can reconcile them against Sheets rather than silently drop them.
+    return (parsed as Array<Partial<MoodEntry> & Omit<MoodEntry, 'syncStatus'>>).map(
+      (entry) => ({ ...entry, syncStatus: entry.syncStatus ?? 'pending' }) as MoodEntry
+    )
   } catch {
     return []
   }
