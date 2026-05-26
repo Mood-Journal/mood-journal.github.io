@@ -3,6 +3,7 @@ import {
   Alert,
   Button,
   Group,
+  Popover,
   SimpleGrid,
   Stack,
   Text,
@@ -36,6 +37,7 @@ export default function LogView() {
   const [note, setNote] = useState('')
   const [date, setDate] = useState(today)
   const [saved, setSaved] = useState(false)
+  const [discardOpen, setDiscardOpen] = useState(false)
 
   const level1Node = EMOTIONS.find((e) => e.label === level1)
   const level2Node = level1Node?.children?.find((e) => e.label === level2)
@@ -195,6 +197,37 @@ export default function LogView() {
               <Alert color="green" variant="light">Saved!</Alert>
             )}
             <Group justify="flex-end">
+              <Popover
+                opened={discardOpen}
+                onClose={() => setDiscardOpen(false)}
+                position="top"
+                withArrow
+                shadow="md"
+              >
+                <Popover.Target>
+                  <Button
+                    variant="subtle"
+                    color="gray"
+                    disabled={isSaving}
+                    onClick={() => setDiscardOpen(true)}
+                  >
+                    Discard
+                  </Button>
+                </Popover.Target>
+                <Popover.Dropdown>
+                  <Stack gap="xs">
+                    <Text size="sm">Discard this entry?</Text>
+                    <Group gap="xs" justify="flex-end">
+                      <Button size="xs" variant="subtle" color="gray" onClick={() => setDiscardOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button size="xs" color="red" onClick={() => { setDiscardOpen(false); reset() }}>
+                        Discard
+                      </Button>
+                    </Group>
+                  </Stack>
+                </Popover.Dropdown>
+              </Popover>
               <Button
                 onClick={() => void handleSave()}
                 loading={isSaving}
