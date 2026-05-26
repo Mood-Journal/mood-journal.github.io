@@ -28,6 +28,10 @@ export function useEntries() {
   // Tracks entry IDs currently being pushed by addEntry so the background
   // sync doesn't race and push the same entry a second time.
   const inFlightIds = useRef(new Set<string>())
+  // Always-current snapshot of items, used inside callbacks to avoid listing
+  // state.items as a useCallback dep (which would recreate callbacks on every entry change).
+  const itemsRef = useRef(state.items)
+  itemsRef.current = state.items
 
   // Background sync with Sheets when auth'd and a sheet is configured.
   // Depends on state.sheetId so the effect re-runs when a sheet is connected
@@ -39,6 +43,10 @@ export function useEntries() {
 
     const controller = new AbortController()
 
+    // loadLocalEntries is intentionally sequenced after readEntries, not parallelised.
+    // Reading local state after the network round-trip minimises the window in which
+    // a concurrent addEntry write could land in localStorage but be absent from the
+    // snapshot used for the merge comparison.
     readEntries(spreadsheetId, authState.accessToken, controller.signal)
       .then(async (sheetsEntries) => {
         const localEntries = await loadLocalEntries()
@@ -88,7 +96,7 @@ export function useEntries() {
 
       const entry = createMoodEntry(fields)
       // newItems mirrors what APPEND_ENTRY does in the reducer
-      const newItems = [entry, ...state.items]
+      const newItems = [entry, ...itemsRef.current]
 
       dispatch({ type: 'APPEND_ENTRY', payload: entry })
       await saveLocalEntries(newItems)
@@ -118,12 +126,12 @@ export function useEntries() {
         inFlightIds.current.delete(entry.id)
       }
     },
-    [authState.accessToken, dispatch, state.items, state.sheetId]
+    [authState.accessToken, dispatch, state.sheetId]
   )
 
   const updateEntry = useCallback(
     async (updated: MoodEntry) => {
-      const newItems = state.items.map((e) => (e.id === updated.id ? updated : e))
+      const newItems = itemsRef.current.map((e) => (e.id === updated.id ? updated : e))
       dispatch({ type: 'UPDATE_ENTRY', payload: updated })
       await saveLocalEntries(newItems)
 
@@ -145,13 +153,13 @@ export function useEntries() {
         dispatch({ type: 'SET_ERROR', payload: message })
       }
     },
-    [authState.accessToken, dispatch, state.items, state.sheetId]
+    [authState.accessToken, dispatch, state.sheetId]
   )
 
   const deleteEntry = useCallback(
     async (entryId: string) => {
-      const entry = state.items.find((e) => e.id === entryId)
-      const newItems = state.items.filter((e) => e.id !== entryId)
+      const entry = itemsRef.current.find((e) => e.id === entryId)
+      const newItems = itemsRef.current.filter((e) => e.id !== entryId)
       dispatch({ type: 'DELETE_ENTRY', payload: entryId })
       await saveLocalEntries(newItems)
 
@@ -165,7 +173,7 @@ export function useEntries() {
         // Best effort — entry is already removed locally
       }
     },
-    [authState.accessToken, dispatch, state.items, state.sheetId]
+    [authState.accessToken, dispatch, state.sheetId]
   )
 
   return {
