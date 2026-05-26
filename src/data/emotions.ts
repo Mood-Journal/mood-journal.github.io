@@ -43,7 +43,7 @@ export const EMOTIONS: EmotionTree = [
       },
       {
         label: 'Critical',
-        children: [{ label: 'Dismissive' }, { label: 'Skeptical' }],
+        children: [{ label: 'Sceptical' }, { label: 'Dismissive' }],
       },
     ],
   },
@@ -61,11 +61,11 @@ export const EMOTIONS: EmotionTree = [
       },
       {
         label: 'Insecure',
-        children: [{ label: 'Inferior' }, { label: 'Worthless' }],
+        children: [{ label: 'Inadequate' }, { label: 'Inferior' }],
       },
       {
         label: 'Weak',
-        children: [{ label: 'Vulnerable' }, { label: 'Victimised' }],
+        children: [{ label: 'Worthless' }, { label: 'Insignificant' }],
       },
       {
         label: 'Rejected',
@@ -86,16 +86,16 @@ export const EMOTIONS: EmotionTree = [
         children: [{ label: 'Judgmental' }, { label: 'Embarrassed' }],
       },
       {
-        label: 'Disappointed',
-        children: [{ label: 'Appalled' }, { label: 'Revolted' }],
-      },
-      {
         label: 'Awful',
         children: [{ label: 'Nauseated' }, { label: 'Detestable' }],
       },
       {
         label: 'Repelled',
         children: [{ label: 'Horrified' }, { label: 'Hesitant' }],
+      },
+      {
+        label: 'Disappointed',
+        children: [{ label: 'Appalled' }, { label: 'Revolted' }],
       },
     ],
   },
@@ -104,8 +104,16 @@ export const EMOTIONS: EmotionTree = [
     color: 'blue',
     children: [
       {
-        label: 'Hurt',
-        children: [{ label: 'Embarrassed' }, { label: 'Devastated' }],
+        label: 'Lonely',
+        children: [{ label: 'Isolated' }, { label: 'Abandoned' }],
+      },
+      {
+        label: 'Vulnerable',
+        children: [{ label: 'Fragile' }, { label: 'Victimised' }],
+      },
+      {
+        label: 'Despair',
+        children: [{ label: 'Grief' }, { label: 'Powerless' }],
       },
       {
         label: 'Depressed',
@@ -116,16 +124,8 @@ export const EMOTIONS: EmotionTree = [
         children: [{ label: 'Remorseful' }, { label: 'Ashamed' }],
       },
       {
-        label: 'Despair',
-        children: [{ label: 'Powerless' }, { label: 'Grief' }],
-      },
-      {
-        label: 'Vulnerable',
-        children: [{ label: 'Fragile' }, { label: 'Victimised' }],
-      },
-      {
-        label: 'Lonely',
-        children: [{ label: 'Abandoned' }, { label: 'Isolated' }],
+        label: 'Hurt',
+        children: [{ label: 'Disappointed' }, { label: 'Embarrassed' }],
       },
     ],
   },
@@ -159,7 +159,7 @@ export const EMOTIONS: EmotionTree = [
       },
       {
         label: 'Peaceful',
-        children: [{ label: 'Hopeful' }, { label: 'Inspired' }],
+        children: [{ label: 'Loving' }, { label: 'Thankful' }],
       },
       {
         label: 'Trusting',
@@ -167,7 +167,7 @@ export const EMOTIONS: EmotionTree = [
       },
       {
         label: 'Optimistic',
-        children: [{ label: 'Hopeful' }, { label: 'Excited' }],
+        children: [{ label: 'Hopeful' }, { label: 'Inspired' }],
       },
     ],
   },
@@ -176,20 +176,20 @@ export const EMOTIONS: EmotionTree = [
     color: 'orange',
     children: [
       {
-        label: 'Startled',
-        children: [{ label: 'Shocked' }, { label: 'Dismayed' }],
-      },
-      {
-        label: 'Confused',
-        children: [{ label: 'Disillusioned' }, { label: 'Perplexed' }],
+        label: 'Excited',
+        children: [{ label: 'Eager' }, { label: 'Energetic' }],
       },
       {
         label: 'Amazed',
         children: [{ label: 'Astonished' }, { label: 'Awe' }],
       },
       {
-        label: 'Excited',
-        children: [{ label: 'Eager' }, { label: 'Energetic' }],
+        label: 'Confused',
+        children: [{ label: 'Disillusioned' }, { label: 'Perplexed' }],
+      },
+      {
+        label: 'Startled',
+        children: [{ label: 'Shocked' }, { label: 'Dismayed' }],
       },
     ],
   },
@@ -202,20 +202,16 @@ export const EMOTIONS: EmotionTree = [
         children: [{ label: 'Indifferent' }, { label: 'Apathetic' }],
       },
       {
+        label: 'Tired',
+        children: [{ label: 'Sleepy' }, { label: 'Unfocused' }],
+      },
+      {
         label: 'Busy',
         children: [{ label: 'Pressured' }, { label: 'Rushed' }],
       },
       {
         label: 'Stressed',
         children: [{ label: 'Overwhelmed' }, { label: 'Out of Control' }],
-      },
-      {
-        label: 'Tired',
-        children: [{ label: 'Sleepy' }, { label: 'Unfocussed' }],
-      },
-      {
-        label: 'Unwell',
-        children: [{ label: 'Sick' }, { label: 'Run Down' }],
       },
     ],
   },

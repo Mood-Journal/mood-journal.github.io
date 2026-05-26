@@ -1,0 +1,134 @@
+# The Feelings Wheel
+
+*Originally created by Dr. Gloria Willcox*
+
+- Angry
+  - Let down
+    - Betrayed
+    - Resentful
+  - Humiliated
+    - Disrespected
+    - Ridiculed
+  - Bitter
+    - Indignant
+    - Violated
+  - Mad
+    - Furious
+    - Jealous
+  - Aggressive
+    - Provoked
+    - Hostile
+  - Frustrated
+    - Infuriated
+    - Annoyed
+  - Distant
+    - Withdrawn
+    - Numb
+  - Critical
+    - Sceptical
+    - Dismissive
+- Fearful
+  - Scared
+    - Helpless
+    - Frightened
+  - Anxious
+    - Overwhelmed
+    - Worried
+  - Insecure
+    - Inadequate
+    - Inferior
+  - Weak
+    - Worthless
+    - Insignificant
+  - Rejected
+    - Excluded
+    - Persecuted
+  - Threatened
+    - Nervous
+    - Exposed
+- Disgusted
+  - Disapproving
+    - Judgmental
+    - Embarrassed
+  - Awful
+    - Nauseated
+    - Detestable
+  - Repelled
+    - Horrified
+    - Hesitant
+  - Disappointed
+    - Appalled
+    - Revolted
+- Sad
+  - Lonely
+    - Isolated
+    - Abandoned
+  - Vulnerable
+    - Fragile
+    - Victimised
+  - Despair
+    - Grief
+    - Powerless
+  - Depressed
+    - Empty
+    - Inferior
+  - Guilty
+    - Remorseful
+    - Ashamed
+  - Hurt
+    - Disappointed
+    - Embarrassed
+- Happy
+  - Playful
+    - Aroused
+    - Cheeky
+  - Content
+    - Free
+    - Joyful
+  - Interested
+    - Curious
+    - Inquisitive
+  - Proud
+    - Successful
+    - Confident
+  - Accepted
+    - Respected
+    - Valued
+  - Powerful
+    - Courageous
+    - Creative
+  - Peaceful
+    - Loving
+    - Thankful
+  - Trusting
+    - Sensitive
+    - Intimate
+  - Optimistic
+    - Hopeful
+    - Inspired
+- Surprised
+  - Excited
+    - Eager
+    - Energetic
+  - Amazed
+    - Astonished
+    - Awe
+  - Confused
+    - Disillusioned
+    - Perplexed
+  - Startled
+    - Shocked
+    - Dismayed
+- Bad
+  - Bored
+    - Indifferent
+    - Apathetic
+  - Tired
+    - Sleepy
+    - Unfocused
+  - Busy
+    - Pressured
+    - Rushed
+  - Stressed
+    - Overwhelmed
+    - Out of control
