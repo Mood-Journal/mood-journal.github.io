@@ -13,6 +13,8 @@ type EntriesAction =
   | { type: 'SET_LOADING' }
   | { type: 'SET_ENTRIES'; payload: MoodEntry[] }
   | { type: 'APPEND_ENTRY'; payload: MoodEntry }
+  | { type: 'UPDATE_ENTRY'; payload: MoodEntry }
+  | { type: 'DELETE_ENTRY'; payload: string }
   | { type: 'SET_SAVING' }
   | { type: 'SET_ERROR'; payload: string }
   | { type: 'RESET' }
@@ -38,6 +40,20 @@ function entriesReducer(state: EntriesState, action: EntriesAction): EntriesStat
         ...state,
         status: 'loaded',
         items: [action.payload, ...state.items],
+        error: null,
+      }
+    case 'UPDATE_ENTRY':
+      return {
+        ...state,
+        status: 'loaded',
+        items: state.items.map((e) => (e.id === action.payload.id ? action.payload : e)),
+        error: null,
+      }
+    case 'DELETE_ENTRY':
+      return {
+        ...state,
+        status: 'loaded',
+        items: state.items.filter((e) => e.id !== action.payload),
         error: null,
       }
     case 'SET_SAVING':

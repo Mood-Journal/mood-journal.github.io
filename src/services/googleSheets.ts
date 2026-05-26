@@ -5,6 +5,32 @@ const SHEET_NAME = 'Entries'
 const RANGE = `${SHEET_NAME}!A:G`
 const HEADER = ['id', 'date', 'level1', 'level2', 'level3', 'note', 'createdAt']
 
+async function findRowIndex(
+  spreadsheetId: string,
+  accessToken: string,
+  entryId: string
+): Promise<number | null> {
+  const url = `${BASE_URL}/${spreadsheetId}/values/${SHEET_NAME}!A:A`
+  const res = await fetch(url, { headers: authHeaders(accessToken) })
+  if (!res.ok) throw res
+  const data = (await res.json()) as { values?: string[][] }
+  if (!data.values) return null
+  const idx = data.values.findIndex((row) => row[0] === entryId)
+  // idx 0 is the header; a real entry must be at idx >= 1
+  return idx >= 1 ? idx + 1 : null // convert to 1-based sheet row number
+}
+
+async function getEntriesSheetId(spreadsheetId: string, accessToken: string): Promise<number> {
+  const res = await fetch(`${BASE_URL}/${spreadsheetId}`, { headers: authHeaders(accessToken) })
+  if (!res.ok) throw res
+  const data = (await res.json()) as {
+    sheets: Array<{ properties: { title: string; sheetId: number } }>
+  }
+  const sheet = data.sheets?.find((s) => s.properties.title === SHEET_NAME)
+  if (!sheet) throw new Error(`Sheet "${SHEET_NAME}" not found`)
+  return sheet.properties.sheetId
+}
+
 function authHeaders(accessToken: string): Record<string, string> {
   return {
     Authorization: `Bearer ${accessToken}`,
@@ -60,6 +86,59 @@ export async function appendEntry(
     throw new Error('Failed to save entry. Please check your connection and try again.')
   }
   if (!retryRes.ok) throw new Error(`Sheets API error: ${retryRes.status}`)
+}
+
+export async function updateEntry(
+  spreadsheetId: string,
+  accessToken: string,
+  entry: MoodEntry
+): Promise<void> {
+  const rowIndex = await findRowIndex(spreadsheetId, accessToken, entry.id)
+  if (rowIndex === null) {
+    await appendEntry(spreadsheetId, accessToken, entry)
+    return
+  }
+  const range = `${SHEET_NAME}!A${rowIndex}:G${rowIndex}`
+  const res = await fetch(
+    `${BASE_URL}/${spreadsheetId}/values/${range}?valueInputOption=RAW`,
+    {
+      method: 'PUT',
+      headers: authHeaders(accessToken),
+      body: JSON.stringify({ values: [moodEntryToRow(entry)] }),
+    }
+  )
+  if (!res.ok) throw new Error(`Sheets API error: ${res.status}`)
+}
+
+export async function deleteEntry(
+  spreadsheetId: string,
+  accessToken: string,
+  entryId: string
+): Promise<void> {
+  const [rowIndex, sheetId] = await Promise.all([
+    findRowIndex(spreadsheetId, accessToken, entryId),
+    getEntriesSheetId(spreadsheetId, accessToken),
+  ])
+  if (rowIndex === null) return
+  const res = await fetch(`${BASE_URL}/${spreadsheetId}:batchUpdate`, {
+    method: 'POST',
+    headers: authHeaders(accessToken),
+    body: JSON.stringify({
+      requests: [
+        {
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: 'ROWS',
+              startIndex: rowIndex - 1, // 0-based
+              endIndex: rowIndex,
+            },
+          },
+        },
+      ],
+    }),
+  })
+  if (!res.ok) throw new Error(`Sheets API error: ${res.status}`)
 }
 
 async function ensureEntriesSheet(spreadsheetId: string, accessToken: string): Promise<void> {

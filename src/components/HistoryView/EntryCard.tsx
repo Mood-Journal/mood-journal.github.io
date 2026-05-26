@@ -1,9 +1,10 @@
-import { Badge, Card, Group, Stack, Text } from '@mantine/core'
+import { Badge, Card, Group, Stack, Text, UnstyledButton } from '@mantine/core'
 import { type MoodEntry, deepestLabel, breadcrumb } from '@/models/moodEntry'
 import { resolveColor } from '@/data/emotions'
 
 interface EntryCardProps {
   entry: MoodEntry
+  onEdit: () => void
 }
 
 function formatDate(dateStr: string): string {
@@ -11,7 +12,7 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-export default function EntryCard({ entry }: EntryCardProps) {
+export default function EntryCard({ entry, onEdit }: EntryCardProps) {
   const color = resolveColor(entry.level1)
   const label = deepestLabel(entry)
   const path = breadcrumb(entry)
@@ -19,27 +20,29 @@ export default function EntryCard({ entry }: EntryCardProps) {
     entry.note && entry.note.length > 120 ? entry.note.slice(0, 120) + '…' : entry.note
 
   return (
-    <Card withBorder padding="md" radius="md">
-      <Stack gap="xs">
-        <Group justify="space-between" align="flex-start">
-          <Text size="sm" c="dimmed">
-            {formatDate(entry.date)}
-          </Text>
-          <Badge color={color} variant="light">
-            {label}
-          </Badge>
-        </Group>
-        {path !== label && (
-          <Text size="xs" c="dimmed">
-            {path}
-          </Text>
-        )}
-        {truncatedNote && (
-          <Text size="sm" fs="italic" c="dimmed">
-            &ldquo;{truncatedNote}&rdquo;
-          </Text>
-        )}
-      </Stack>
-    </Card>
+    <UnstyledButton onClick={onEdit} style={{ display: 'block', width: '100%' }}>
+      <Card withBorder padding="md" radius="md" style={{ cursor: 'pointer' }}>
+        <Stack gap="xs">
+          <Group justify="space-between" align="flex-start">
+            <Text size="sm" c="dimmed">
+              {formatDate(entry.date)}
+            </Text>
+            <Badge color={color} variant="light">
+              {label}
+            </Badge>
+          </Group>
+          {path !== label && (
+            <Text size="xs" c="dimmed">
+              {path}
+            </Text>
+          )}
+          {truncatedNote && (
+            <Text size="sm" fs="italic" c="dimmed">
+              &ldquo;{truncatedNote}&rdquo;
+            </Text>
+          )}
+        </Stack>
+      </Card>
+    </UnstyledButton>
   )
 }

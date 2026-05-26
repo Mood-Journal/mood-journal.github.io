@@ -1,9 +1,13 @@
+import { useState } from 'react'
 import { Alert, Skeleton, Stack, Text, Title } from '@mantine/core'
 import { useEntries } from '@/hooks/useEntries'
+import type { MoodEntry } from '@/models/moodEntry'
 import EntryCard from './EntryCard'
+import EditModal from '../LogView/EditModal'
 
 export default function HistoryView() {
   const { entries, status, error } = useEntries()
+  const [editing, setEditing] = useState<MoodEntry | null>(null)
 
   return (
     <Stack gap="md" py="md">
@@ -30,9 +34,13 @@ export default function HistoryView() {
       {(status === 'loaded' || status === 'saving') && entries.length > 0 && (
         <Stack gap="sm">
           {[...entries].sort((a, b) => b.date.localeCompare(a.date)).map((entry) => (
-            <EntryCard key={entry.id} entry={entry} />
+            <EntryCard key={entry.id} entry={entry} onEdit={() => setEditing(entry)} />
           ))}
         </Stack>
+      )}
+
+      {editing && (
+        <EditModal entry={editing} onClose={() => setEditing(null)} />
       )}
     </Stack>
   )
