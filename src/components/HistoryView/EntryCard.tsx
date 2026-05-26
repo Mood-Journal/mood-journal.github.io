@@ -4,7 +4,7 @@ import { resolveColor } from '@/data/emotions'
 
 interface EntryCardProps {
   entry: MoodEntry
-  onEdit: () => void
+  onSelect: () => void
 }
 
 function formatDate(dateStr: string): string {
@@ -12,7 +12,7 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-export default function EntryCard({ entry, onEdit }: EntryCardProps) {
+export default function EntryCard({ entry, onSelect }: EntryCardProps) {
   const color = resolveColor(entry.level1)
   const label = deepestLabel(entry)
   const path = breadcrumb(entry)
@@ -20,7 +20,7 @@ export default function EntryCard({ entry, onEdit }: EntryCardProps) {
     entry.note && entry.note.length > 120 ? entry.note.slice(0, 120) + '…' : entry.note
 
   return (
-    <UnstyledButton onClick={onEdit} style={{ display: 'block', width: '100%' }}>
+    <UnstyledButton onClick={onSelect} style={{ display: 'block', width: '100%' }}>
       <Card withBorder padding="md" radius="md" style={{ cursor: 'pointer' }}>
         <Stack gap="xs">
           <Group justify="space-between" align="flex-start">

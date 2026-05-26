@@ -3,10 +3,12 @@ import { Alert, Skeleton, Stack, Text, Title } from '@mantine/core'
 import { useEntries } from '@/hooks/useEntries'
 import type { MoodEntry } from '@/models/moodEntry'
 import EntryCard from './EntryCard'
+import ViewModal from './ViewModal'
 import EditModal from '../LogView/EditModal'
 
 export default function HistoryView() {
   const { entries, status, error } = useEntries()
+  const [viewing, setViewing] = useState<MoodEntry | null>(null)
   const [editing, setEditing] = useState<MoodEntry | null>(null)
 
   return (
@@ -36,9 +38,17 @@ export default function HistoryView() {
           {/* Sort here because APPEND_ENTRY prepends unconditionally; a past-dated
               entry would otherwise appear at the top until the next sync runs mergeById. */}
           {[...entries].sort((a, b) => b.date.localeCompare(a.date)).map((entry) => (
-            <EntryCard key={entry.id} entry={entry} onEdit={() => setEditing(entry)} />
+            <EntryCard key={entry.id} entry={entry} onSelect={() => setViewing(entry)} />
           ))}
         </Stack>
+      )}
+
+      {viewing && !editing && (
+        <ViewModal
+          entry={viewing}
+          onEdit={() => { setEditing(viewing); setViewing(null) }}
+          onClose={() => setViewing(null)}
+        />
       )}
 
       {editing && (

@@ -226,42 +226,40 @@ export default function EditModal({ entry, onClose }: EditModalProps) {
     }
   }
 
-  return (
-    <Modal opened onClose={onClose} title="Edit entry" size="md">
-      <Stack gap="md">
-        {crumbs.length > 0 && (
-          <Group gap={6} align="center">
-            {crumbs.map(({ label, backTo }, i) => (
-              <Group key={label} gap={6} align="center">
-                {i > 0 && (
-                  <Text size="xl" fw={700} c="dimmed" style={{ lineHeight: 1 }}>›</Text>
-                )}
-                <UnstyledButton
-                  onClick={() => goBack(backTo)}
-                  style={{
-                    fontSize: 'var(--mantine-font-size-xl)',
-                    fontWeight: 700,
-                    lineHeight: 1.2,
-                    color:
-                      i === crumbs.length - 1
-                        ? `var(--mantine-color-${rootColor}-7)`
-                        : 'var(--mantine-color-dimmed)',
-                  }}
-                >
-                  {label}
-                </UnstyledButton>
-              </Group>
-            ))}
-          </Group>
-        )}
+  const titleNode = crumbs.length > 0 ? (
+    <Group gap={6} align="center">
+      {crumbs.map(({ label, backTo }, i) => (
+        <Group key={label} gap={6} align="center">
+          {i > 0 && (
+            <Text size="xl" fw={700} c="dimmed" style={{ lineHeight: 1 }}>›</Text>
+          )}
+          <UnstyledButton
+            onClick={() => goBack(backTo)}
+            style={{
+              fontSize: 'var(--mantine-font-size-xl)',
+              fontWeight: 700,
+              lineHeight: 1.2,
+              color:
+                i === crumbs.length - 1
+                  ? `var(--mantine-color-${rootColor}-7)`
+                  : 'var(--mantine-color-dimmed)',
+            }}
+          >
+            {label}
+          </UnstyledButton>
+        </Group>
+      ))}
+    </Group>
+  ) : null
 
-        <div
-          key={animKey}
-          className={animDir === 'forward' ? styles.slideInRight : styles.slideInLeft}
-        >
-          {renderContent()}
-        </div>
-      </Stack>
+  return (
+    <Modal opened onClose={onClose} title={titleNode} size="md">
+      <div
+        key={animKey}
+        className={animDir === 'forward' ? styles.slideInRight : styles.slideInLeft}
+      >
+        {renderContent()}
+      </div>
     </Modal>
   )
 }
