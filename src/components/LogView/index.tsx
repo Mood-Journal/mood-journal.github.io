@@ -2,7 +2,6 @@ import { useState } from 'react'
 import {
   Alert,
   Button,
-  Divider,
   Group,
   SimpleGrid,
   Stack,
@@ -10,22 +9,29 @@ import {
   Textarea,
   TextInput,
   Title,
+  UnstyledButton,
 } from '@mantine/core'
 import { EMOTIONS, resolveColor } from '@/data/emotions'
 import { useEntries } from '@/hooks/useEntries'
 import EmotionCard from './EmotionCard'
 import EmotionPicker from './EmotionPicker'
+import styles from './LogView.module.css'
 
 function today(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
+type Step = 'level1' | 'level2' | 'level3' | 'note'
+
 export default function LogView() {
   const { addEntry, status, error } = useEntries()
 
+  const [step, setStep] = useState<Step>('level1')
+  const [animDir, setAnimDir] = useState<'forward' | 'back'>('forward')
+  const [animKey, setAnimKey] = useState(0)
+
   const [level1, setLevel1] = useState<string | null>(null)
   const [level2, setLevel2] = useState<string | null>(null)
-  const [level2Skipped, setLevel2Skipped] = useState(false)
   const [level3, setLevel3] = useState<string | null>(null)
   const [note, setNote] = useState('')
   const [date, setDate] = useState(today)
@@ -35,42 +41,47 @@ export default function LogView() {
   const level2Node = level1Node?.children?.find((e) => e.label === level2)
   const rootColor = level1 ? resolveColor(level1) : 'violet'
 
-  const showLevel2 = level1 !== null
-  const showLevel3 = level2 !== null && (level2Node?.children?.length ?? 0) > 0
-  const showNoteAndSave = level1 !== null && (level2 !== null || level2Skipped)
+  function go(nextStep: Step, dir: 'forward' | 'back') {
+    setAnimDir(dir)
+    setStep(nextStep)
+    setAnimKey((k) => k + 1)
+  }
 
   function handleLevel1Select(label: string) {
-    if (label === level1) return
     setLevel1(label)
     setLevel2(null)
-    setLevel2Skipped(false)
     setLevel3(null)
+    const node = EMOTIONS.find((e) => e.label === label)
+    go(node?.children?.length ? 'level2' : 'note', 'forward')
   }
 
   function handleLevel2Select(label: string) {
     setLevel2(label)
-    setLevel2Skipped(false)
     setLevel3(null)
+    const node = level1Node?.children?.find((e) => e.label === label)
+    go(node?.children?.length ? 'level3' : 'note', 'forward')
   }
 
-  function handleSkipLevel2() {
-    setLevel2(null)
-    setLevel2Skipped(true)
-    setLevel3(null)
+  function handleLevel3Select(label: string) {
+    setLevel3(label)
+    go('note', 'forward')
   }
 
-  function handleSkipLevel3() {
-    setLevel3(null)
+  function goBack(to: Step) {
+    if (to === 'level1') { setLevel1(null); setLevel2(null); setLevel3(null) }
+    else if (to === 'level2') { setLevel2(null); setLevel3(null) }
+    else if (to === 'level3') { setLevel3(null) }
+    go(to, 'back')
   }
 
   function reset() {
     setLevel1(null)
     setLevel2(null)
-    setLevel2Skipped(false)
     setLevel3(null)
     setNote('')
     setDate(today())
     setSaved(false)
+    go('level1', 'forward')
   }
 
   async function handleSave() {
@@ -88,83 +99,79 @@ export default function LogView() {
 
   const isSaving = status === 'saving'
 
-  return (
-    <Stack gap="lg" py="md">
-      <Title order={3}>How are you feeling?</Title>
+  const crumbs: Array<{ label: string; backTo: Step }> = []
+  if (level1) crumbs.push({ label: level1, backTo: 'level1' })
+  if (level2) crumbs.push({ label: level2, backTo: 'level2' })
+  if (level3) crumbs.push({ label: level3, backTo: 'level3' })
 
-      <SimpleGrid cols={{ base: 2, xs: 3, sm: 4 }} spacing="sm">
-        {EMOTIONS.map((node) => (
-          <EmotionCard
-            key={node.label}
-            node={node}
-            selected={level1 === node.label}
-            dimmed={level1 !== null && level1 !== node.label}
-            onSelect={() => handleLevel1Select(node.label)}
-          />
-        ))}
-      </SimpleGrid>
+  function renderContent() {
+    switch (step) {
+      case 'level1':
+        return (
+          <Stack gap="md">
+            <Title order={3}>How are you feeling?</Title>
+            <SimpleGrid cols={{ base: 2, xs: 3, sm: 4 }} spacing="sm">
+              {EMOTIONS.map((node) => (
+                <EmotionCard
+                  key={node.label}
+                  node={node}
+                  selected={false}
+                  dimmed={false}
+                  onSelect={() => handleLevel1Select(node.label)}
+                />
+              ))}
+            </SimpleGrid>
+          </Stack>
+        )
 
-      {showLevel2 && level1Node?.children && (
-        <>
-          <Divider />
-          <Stack gap="xs">
-            <Text size="sm" c="dimmed">
-              More specifically…
-            </Text>
+      case 'level2':
+        return (
+          <Stack gap="md">
+            <Text size="sm" c="dimmed">More specifically…</Text>
             <EmotionPicker
-              nodes={level1Node.children}
+              nodes={level1Node!.children!}
               color={rootColor}
-              selected={level2}
+              selected={null}
               onSelect={handleLevel2Select}
               label="Level-2 emotions"
             />
-            {!level2 && (
-              <Button
-                variant="subtle"
-                size="xs"
-                onClick={handleSkipLevel2}
-                color={rootColor}
-                style={{ alignSelf: 'flex-start' }}
-              >
-                Skip →
-              </Button>
-            )}
-          </Stack>
-        </>
-      )}
-
-      {showLevel3 && level2Node?.children && (
-        <>
-          <Divider />
-          <Stack gap="xs">
-            <Text size="sm" c="dimmed">
-              Even more precisely…
-            </Text>
-            <EmotionPicker
-              nodes={level2Node.children}
+            <Button
+              variant="subtle"
+              size="xs"
+              onClick={() => go('note', 'forward')}
               color={rootColor}
-              selected={level3}
-              onSelect={setLevel3}
+              style={{ alignSelf: 'flex-start' }}
+            >
+              Skip →
+            </Button>
+          </Stack>
+        )
+
+      case 'level3':
+        return (
+          <Stack gap="md">
+            <Text size="sm" c="dimmed">Even more precisely…</Text>
+            <EmotionPicker
+              nodes={level2Node!.children!}
+              color={rootColor}
+              selected={null}
+              onSelect={handleLevel3Select}
               label="Level-3 emotions"
             />
-            {!level3 && (
-              <Button
-                variant="subtle"
-                size="xs"
-                onClick={handleSkipLevel3}
-                color={rootColor}
-                style={{ alignSelf: 'flex-start' }}
-              >
-                Skip →
-              </Button>
-            )}
+            <Button
+              variant="subtle"
+              size="xs"
+              onClick={() => go('note', 'forward')}
+              color={rootColor}
+              style={{ alignSelf: 'flex-start' }}
+            >
+              Skip →
+            </Button>
           </Stack>
-        </>
-      )}
+        )
 
-      {showNoteAndSave && (
-        <>
-          <Divider />
+      case 'note':
+        return (
           <Stack gap="md">
             <Textarea
               label="Note (optional)"
@@ -182,14 +189,10 @@ export default function LogView() {
               onChange={(e) => setDate(e.currentTarget.value)}
             />
             {error && (
-              <Alert color="red" variant="light">
-                {error}
-              </Alert>
+              <Alert color="red" variant="light">{error}</Alert>
             )}
             {saved && (
-              <Alert color="green" variant="light">
-                Saved!
-              </Alert>
+              <Alert color="green" variant="light">Saved!</Alert>
             )}
             <Group justify="flex-end">
               <Button
@@ -201,8 +204,43 @@ export default function LogView() {
               </Button>
             </Group>
           </Stack>
-        </>
+        )
+    }
+  }
+
+  return (
+    <Stack gap="md" py="md">
+      {crumbs.length > 0 && (
+        <Group gap={6} align="center">
+          {crumbs.map(({ label, backTo }, i) => (
+            <Group key={label} gap={6} align="center">
+              {i > 0 && (
+                <Text size="xl" fw={700} c="dimmed" style={{ lineHeight: 1 }}>›</Text>
+              )}
+              <UnstyledButton
+                onClick={() => goBack(backTo)}
+                style={{
+                  fontSize: 'var(--mantine-font-size-xl)',
+                  fontWeight: 700,
+                  lineHeight: 1.2,
+                  color: i === crumbs.length - 1
+                    ? `var(--mantine-color-${rootColor}-7)`
+                    : 'var(--mantine-color-dimmed)',
+                }}
+              >
+                {label}
+              </UnstyledButton>
+            </Group>
+          ))}
+        </Group>
       )}
+
+      <div
+        key={animKey}
+        className={animDir === 'forward' ? styles.slideInRight : styles.slideInLeft}
+      >
+        {renderContent()}
+      </div>
     </Stack>
   )
 }
