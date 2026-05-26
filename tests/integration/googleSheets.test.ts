@@ -173,9 +173,17 @@ describe('appendEntry', () => {
     expect(body.values[0][5]).toBe('')
   })
 
-  it('retries once on network error and throws on second failure', async () => {
-    vi.useFakeTimers()
+  it('throws immediately on network error without retrying', async () => {
     const mockFetch = vi.fn().mockRejectedValue(new Error('Network error'))
+    vi.stubGlobal('fetch', mockFetch)
+
+    await expect(appendEntry(SPREADSHEET_ID, ACCESS_TOKEN, entry)).rejects.toThrow(/failed to save/i)
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries once on 5xx server error and throws when retry also fails', async () => {
+    vi.useFakeTimers()
+    const mockFetch = vi.fn().mockResolvedValue({ ok: false, status: 503 })
     vi.stubGlobal('fetch', mockFetch)
 
     let caughtError: Error | undefined
@@ -186,9 +194,31 @@ describe('appendEntry', () => {
     await settled
 
     expect(caughtError).toBeDefined()
-    expect(caughtError?.message).toMatch(/failed to save/i)
+    expect(caughtError?.message).toMatch(/sheets api error: 503/i)
     expect(mockFetch).toHaveBeenCalledTimes(2)
     vi.useRealTimers()
+  })
+
+  it('retries once on 5xx server error and resolves when retry succeeds', async () => {
+    vi.useFakeTimers()
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 500 })
+      .mockResolvedValueOnce({ ok: true })
+    vi.stubGlobal('fetch', mockFetch)
+
+    const settled = appendEntry(SPREADSHEET_ID, ACCESS_TOKEN, entry)
+    await vi.runAllTimersAsync()
+    await expect(settled).resolves.toBeUndefined()
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+  })
+
+  it('throws immediately on 4xx error without retrying', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: false, status: 403 })
+    vi.stubGlobal('fetch', mockFetch)
+
+    await expect(appendEntry(SPREADSHEET_ID, ACCESS_TOKEN, entry)).rejects.toThrow(/sheets api error: 403/i)
+    expect(mockFetch).toHaveBeenCalledTimes(1)
   })
 })
 

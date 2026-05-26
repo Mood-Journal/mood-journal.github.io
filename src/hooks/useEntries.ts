@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useEntriesContext } from '@/context/EntriesContext'
 import { useAuth } from '@/context/AuthContext'
 import { createMoodEntry, moodEntryFieldsSchema } from '@/models/moodEntry'
@@ -25,6 +25,9 @@ function mergeById(primary: MoodEntry[], secondary: MoodEntry[]): MoodEntry[] {
 export function useEntries() {
   const { state, dispatch } = useEntriesContext()
   const { state: authState } = useAuth()
+  // Tracks entry IDs currently being pushed by addEntry so the background
+  // sync doesn't race and push the same entry a second time.
+  const inFlightIds = useRef(new Set<string>())
 
   // Background sync with Sheets when auth'd and a sheet is configured.
   // Depends on state.sheetId so the effect re-runs when a sheet is connected
@@ -40,7 +43,9 @@ export function useEntries() {
       .then(async (sheetsEntries) => {
         const localEntries = await loadLocalEntries()
         const sheetsIds = new Set(sheetsEntries.map((e) => e.id))
-        const localOnly = localEntries.filter((e) => !sheetsIds.has(e.id))
+        const localOnly = localEntries.filter(
+          (e) => !sheetsIds.has(e.id) && !inFlightIds.current.has(e.id)
+        )
 
         // push any local-only (offline) entries up to Sheets
         const token = authState.accessToken
@@ -79,6 +84,7 @@ export function useEntries() {
       const spreadsheetId = state.sheetId
       if (!accessToken || !spreadsheetId) return
 
+      inFlightIds.current.add(entry.id)
       dispatch({ type: 'SET_SAVING' })
       try {
         await appendEntry(spreadsheetId, accessToken, entry)
@@ -91,6 +97,8 @@ export function useEntries() {
           message = err.message
         }
         dispatch({ type: 'SET_ERROR', payload: message })
+      } finally {
+        inFlightIds.current.delete(entry.id)
       }
     },
     [authState.accessToken, dispatch, state.items, state.sheetId]

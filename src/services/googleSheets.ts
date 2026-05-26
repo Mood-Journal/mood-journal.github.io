@@ -31,27 +31,35 @@ export async function appendEntry(
   entry: MoodEntry
 ): Promise<void> {
   const url = `${BASE_URL}/${spreadsheetId}/values/${RANGE}:append?valueInputOption=RAW`
-  const body = JSON.stringify({ values: [moodEntryToRow(entry)] })
-
-  async function attempt(): Promise<void> {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: authHeaders(accessToken),
-      body,
-    })
-    if (!res.ok) throw new Error(`Sheets API error: ${res.status}`)
+  const init: RequestInit = {
+    method: 'POST',
+    headers: authHeaders(accessToken),
+    body: JSON.stringify({ values: [moodEntryToRow(entry)] }),
   }
 
+  let res: Response
   try {
-    await attempt()
+    res = await fetch(url, init)
   } catch {
-    await new Promise((r) => setTimeout(r, 2000))
-    try {
-      await attempt()
-    } catch {
-      throw new Error('Failed to save entry. Please check your connection and try again.')
-    }
+    // Network error — the write's server-side status is unknown; retrying risks
+    // appending a duplicate row if the request reached Sheets before the failure.
+    throw new Error('Failed to save entry. Please check your connection and try again.')
   }
+
+  if (res.ok) return
+
+  // 4xx: request was rejected; the row was not written.
+  if (res.status < 500) throw new Error(`Sheets API error: ${res.status}`)
+
+  // 5xx: server error — the write definitely did not go through; retry once.
+  await new Promise<void>((r) => setTimeout(r, 2000))
+  let retryRes: Response
+  try {
+    retryRes = await fetch(url, init)
+  } catch {
+    throw new Error('Failed to save entry. Please check your connection and try again.')
+  }
+  if (!retryRes.ok) throw new Error(`Sheets API error: ${retryRes.status}`)
 }
 
 async function ensureEntriesSheet(spreadsheetId: string, accessToken: string): Promise<void> {
