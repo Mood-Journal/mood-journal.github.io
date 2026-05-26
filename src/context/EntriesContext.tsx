@@ -1,11 +1,12 @@
 import { createContext, useReducer, useContext, useEffect, type ReactNode, type Dispatch } from 'react'
 import type { MoodEntry } from '@/models/moodEntry'
-import { loadLocalEntries } from '@/lib/storage'
+import { loadLocalEntries, loadSheetRef } from '@/lib/storage'
 
 export interface EntriesState {
   status: 'idle' | 'loading' | 'loaded' | 'saving' | 'error'
   items: MoodEntry[]
   error: string | null
+  sheetId: string | null
 }
 
 type EntriesAction =
@@ -15,11 +16,15 @@ type EntriesAction =
   | { type: 'SET_SAVING' }
   | { type: 'SET_ERROR'; payload: string }
   | { type: 'RESET' }
+  | { type: 'SET_SHEET_ID'; payload: string | null }
 
-const initialState: EntriesState = {
-  status: 'idle',
-  items: [],
-  error: null,
+function createInitialState(): EntriesState {
+  return {
+    status: 'idle',
+    items: [],
+    error: null,
+    sheetId: loadSheetRef()?.id ?? null,
+  }
 }
 
 function entriesReducer(state: EntriesState, action: EntriesAction): EntriesState {
@@ -40,7 +45,9 @@ function entriesReducer(state: EntriesState, action: EntriesAction): EntriesStat
     case 'SET_ERROR':
       return { ...state, status: 'error', error: action.payload }
     case 'RESET':
-      return initialState
+      return createInitialState()
+    case 'SET_SHEET_ID':
+      return { ...state, sheetId: action.payload }
   }
 }
 
@@ -52,7 +59,7 @@ interface EntriesContextValue {
 const EntriesContext = createContext<EntriesContextValue | null>(null)
 
 export function EntriesProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(entriesReducer, initialState)
+  const [state, dispatch] = useReducer(entriesReducer, null, createInitialState)
 
   useEffect(() => {
     dispatch({ type: 'SET_LOADING' })

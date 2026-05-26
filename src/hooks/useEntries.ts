@@ -3,7 +3,7 @@ import { useEntriesContext } from '@/context/EntriesContext'
 import { useAuth } from '@/context/AuthContext'
 import { createMoodEntry, moodEntryFieldsSchema } from '@/models/moodEntry'
 import { readEntries, appendEntry } from '@/services/googleSheets'
-import { loadSheetRef, loadLocalEntries, saveLocalEntries } from '@/lib/storage'
+import { loadLocalEntries, saveLocalEntries } from '@/lib/storage'
 import type { MoodEntryFields, MoodEntry } from '@/models/moodEntry'
 
 function mapApiError(status: number, spreadsheetId: string): string {
@@ -26,10 +26,12 @@ export function useEntries() {
   const { state, dispatch } = useEntriesContext()
   const { state: authState } = useAuth()
 
-  // Background sync with Sheets when auth'd and a sheet is configured
+  // Background sync with Sheets when auth'd and a sheet is configured.
+  // Depends on state.sheetId so the effect re-runs when a sheet is connected
+  // while auth is already established.
   useEffect(() => {
     if (authState.status !== 'authorised' || !authState.accessToken) return
-    const spreadsheetId = loadSheetRef()?.id ?? null
+    const spreadsheetId = state.sheetId
     if (!spreadsheetId) return
 
     const controller = new AbortController()
@@ -59,7 +61,7 @@ export function useEntries() {
       })
 
     return () => controller.abort()
-  }, [authState.status, authState.accessToken, dispatch])
+  }, [authState.status, authState.accessToken, dispatch, state.sheetId])
 
   const addEntry = useCallback(
     async (fields: MoodEntryFields) => {
@@ -74,7 +76,7 @@ export function useEntries() {
       await saveLocalEntries(newItems)
 
       const accessToken = authState.accessToken
-      const spreadsheetId = loadSheetRef()?.id ?? null
+      const spreadsheetId = state.sheetId
       if (!accessToken || !spreadsheetId) return
 
       dispatch({ type: 'SET_SAVING' })
@@ -91,7 +93,7 @@ export function useEntries() {
         dispatch({ type: 'SET_ERROR', payload: message })
       }
     },
-    [authState.accessToken, dispatch, state.items]
+    [authState.accessToken, dispatch, state.items, state.sheetId]
   )
 
   return {

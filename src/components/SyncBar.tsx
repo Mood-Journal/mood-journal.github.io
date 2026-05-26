@@ -11,6 +11,7 @@ import {
 } from '@mantine/core'
 import { useAuth } from '@/context/AuthContext'
 import { useGoogleAuth } from '@/hooks/useGoogleAuth'
+import { useEntriesContext } from '@/context/EntriesContext'
 import { loadSheetRef, saveSheetRef } from '@/lib/storage'
 import { initSheet, createSpreadsheet } from '@/services/googleSheets'
 
@@ -61,7 +62,7 @@ function openDrivePicker(accessToken: string): Promise<{ id: string; name: strin
 
 interface SpreadsheetPickerProps {
   accessToken: string
-  onSelected: () => void
+  onSelected: (sheetId: string) => void
 }
 
 function SpreadsheetPicker({ accessToken, onSelected }: SpreadsheetPickerProps) {
@@ -77,7 +78,7 @@ function SpreadsheetPicker({ accessToken, onSelected }: SpreadsheetPickerProps) 
       const ref = await createSpreadsheet(accessToken)
       await initSheet(ref.id, accessToken)
       saveSheetRef(ref)
-      onSelected()
+      onSelected(ref.id)
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : 'Failed to create spreadsheet')
     } finally {
@@ -93,7 +94,7 @@ function SpreadsheetPicker({ accessToken, onSelected }: SpreadsheetPickerProps) 
       if (!file) return
       await initSheet(file.id, accessToken)
       saveSheetRef({ id: file.id, title: file.name })
-      onSelected()
+      onSelected(file.id)
     } catch (e) {
       setConnectError(e instanceof Error ? e.message : 'Failed to connect spreadsheet')
     } finally {
@@ -137,6 +138,7 @@ function SpreadsheetPicker({ accessToken, onSelected }: SpreadsheetPickerProps) 
 export default function SyncBar() {
   const { state, dispatch } = useAuth()
   const { initiateAuth } = useGoogleAuth()
+  const { dispatch: entriesDispatch } = useEntriesContext()
   const [hasSheet, setHasSheet] = useState(() => loadSheetRef() !== null)
 
   const showSetup = state.status === 'authorised' && !hasSheet
@@ -193,7 +195,10 @@ export default function SyncBar() {
         {state.status === 'authorised' && state.accessToken && (
           <SpreadsheetPicker
             accessToken={state.accessToken}
-            onSelected={() => setHasSheet(true)}
+            onSelected={(sheetId) => {
+              entriesDispatch({ type: 'SET_SHEET_ID', payload: sheetId })
+              setHasSheet(true)
+            }}
           />
         )}
       </Modal>
