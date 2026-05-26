@@ -105,9 +105,9 @@ function SpreadsheetPicker({ accessToken, onSelected }: SpreadsheetPickerProps) 
   return (
     <Stack gap="xl">
       <Stack gap="xs">
-        <Text fw={500}>First time? Create a new Mood Ledger in your Drive:</Text>
+        <Text fw={500}>First time? Create a new Mood Journal in your Drive:</Text>
         <Button onClick={() => void handleCreate()} disabled={creating} loading={creating}>
-          {creating ? 'Creating…' : 'Create Mood Ledger'}
+          {creating ? 'Creating…' : 'Create Mood Journal'}
         </Button>
         {createError && (
           <Alert color="red" variant="light">

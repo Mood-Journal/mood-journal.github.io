@@ -173,7 +173,7 @@ export async function createSpreadsheet(
   const res = await fetch(`${BASE_URL}`, {
     method: 'POST',
     headers: authHeaders(accessToken),
-    body: JSON.stringify({ properties: { title: 'Mood Ledger' } }),
+    body: JSON.stringify({ properties: { title: 'Mood Journal' } }),
   })
   if (!res.ok) throw new Error(`Could not create spreadsheet (${res.status})`)
   const data = (await res.json()) as {
@@ -184,5 +184,5 @@ export async function createSpreadsheet(
   if (!data.spreadsheetId) {
     throw new Error(data.error?.message ?? 'Could not create spreadsheet')
   }
-  return { id: data.spreadsheetId, title: data.properties?.title ?? 'Mood Ledger' }
+  return { id: data.spreadsheetId, title: data.properties?.title ?? 'Mood Journal' }
 }
