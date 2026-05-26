@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Alert,
   Button,
@@ -75,6 +75,31 @@ export default function LogView() {
     else if (to === 'level3') { setLevel3(null) }
     go(to, 'back')
   }
+
+  // Ref so the popstate listener always calls the latest closure without re-subscribing
+  const handleBackRef = useRef<() => void>(() => {})
+  handleBackRef.current = () => {
+    switch (step) {
+      case 'level2': goBack('level1'); break
+      case 'level3': goBack('level2'); break
+      case 'note':
+        if (level3 !== null) goBack('level3')
+        else if (level2Node?.children?.length) goBack('level3')
+        else if (level2 !== null) goBack('level2')
+        else if (level1Node?.children?.length) goBack('level2')
+        else goBack('level1')
+        break
+    }
+  }
+
+  // Push a history marker so the back button stays in-flow; pop it when leaving
+  useEffect(() => {
+    if (step === 'level1') return
+    history.pushState({ moodJournalInterceptor: true }, '')
+    const onPop = () => handleBackRef.current()
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [step])
 
   function reset() {
     setLevel1(null)
