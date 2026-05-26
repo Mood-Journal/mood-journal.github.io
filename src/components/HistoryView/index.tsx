@@ -29,7 +29,7 @@ export default function HistoryView() {
 
       {(status === 'loaded' || status === 'saving') && entries.length > 0 && (
         <Stack gap="sm">
-          {entries.map((entry) => (
+          {[...entries].sort((a, b) => b.date.localeCompare(a.date)).map((entry) => (
             <EntryCard key={entry.id} entry={entry} />
           ))}
         </Stack>
