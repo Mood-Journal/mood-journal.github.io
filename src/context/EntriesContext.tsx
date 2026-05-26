@@ -1,5 +1,6 @@
-import { createContext, useReducer, useContext, type ReactNode, type Dispatch } from 'react'
+import { createContext, useReducer, useContext, useEffect, type ReactNode, type Dispatch } from 'react'
 import type { MoodEntry } from '@/models/moodEntry'
+import { loadLocalEntries } from '@/lib/storage'
 
 export interface EntriesState {
   status: 'idle' | 'loading' | 'loaded' | 'saving' | 'error'
@@ -52,6 +53,14 @@ const EntriesContext = createContext<EntriesContextValue | null>(null)
 
 export function EntriesProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(entriesReducer, initialState)
+
+  useEffect(() => {
+    dispatch({ type: 'SET_LOADING' })
+    loadLocalEntries().then((entries) => {
+      dispatch({ type: 'SET_ENTRIES', payload: entries })
+    })
+  }, [])
+
   return (
     <EntriesContext.Provider value={{ state, dispatch }}>{children}</EntriesContext.Provider>
   )

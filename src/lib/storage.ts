@@ -1,5 +1,9 @@
+import { encryptString, decryptString } from './crypto'
+import type { MoodEntry } from '@/models/moodEntry'
+
 const SHEET_REF_KEY = 'mood-journal-spreadsheet:v1'
 const SESSION_HINT_KEY = 'mood-journal-session-hint:v1'
+const ENTRIES_KEY = 'mood-journal-entries:v1'
 
 export interface SheetRef {
   id: string
@@ -61,4 +65,30 @@ export function saveSessionHint(hint: SessionHint): void {
 
 export function clearSessionHint(): void {
   localStorage.removeItem(SESSION_HINT_KEY)
+}
+
+export async function loadLocalEntries(): Promise<MoodEntry[]> {
+  try {
+    const raw = localStorage.getItem(ENTRIES_KEY)
+    if (!raw) return []
+    const decrypted = await decryptString(raw)
+    const parsed = JSON.parse(decrypted) as unknown
+    if (!Array.isArray(parsed)) return []
+    return parsed as MoodEntry[]
+  } catch {
+    return []
+  }
+}
+
+export async function saveLocalEntries(entries: MoodEntry[]): Promise<void> {
+  try {
+    const encrypted = await encryptString(JSON.stringify(entries))
+    localStorage.setItem(ENTRIES_KEY, encrypted)
+  } catch {
+    // Encryption failure should not crash the app — data is still in memory
+  }
+}
+
+export function clearLocalEntries(): void {
+  localStorage.removeItem(ENTRIES_KEY)
 }

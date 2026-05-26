@@ -1,17 +1,18 @@
-import { type ReactNode, useState } from 'react'
+import { useState } from 'react'
 import {
   Alert,
+  Box,
   Button,
-  Center,
+  Group,
   Loader,
+  Modal,
   Stack,
   Text,
-  Title,
 } from '@mantine/core'
 import { useAuth } from '@/context/AuthContext'
 import { useGoogleAuth } from '@/hooks/useGoogleAuth'
-import { initSheet, createSpreadsheet } from '@/services/googleSheets'
 import { loadSheetRef, saveSheetRef } from '@/lib/storage'
+import { initSheet, createSpreadsheet } from '@/services/googleSheets'
 
 const GAPI_SRC = 'https://apis.google.com/js/api.js'
 
@@ -60,7 +61,7 @@ function openDrivePicker(accessToken: string): Promise<{ id: string; name: strin
 
 interface SpreadsheetPickerProps {
   accessToken: string
-  onSelected: (id: string) => void
+  onSelected: () => void
 }
 
 function SpreadsheetPicker({ accessToken, onSelected }: SpreadsheetPickerProps) {
@@ -76,7 +77,7 @@ function SpreadsheetPicker({ accessToken, onSelected }: SpreadsheetPickerProps) 
       const ref = await createSpreadsheet(accessToken)
       await initSheet(ref.id, accessToken)
       saveSheetRef(ref)
-      onSelected(ref.id)
+      onSelected()
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : 'Failed to create spreadsheet')
     } finally {
@@ -92,7 +93,7 @@ function SpreadsheetPicker({ accessToken, onSelected }: SpreadsheetPickerProps) 
       if (!file) return
       await initSheet(file.id, accessToken)
       saveSheetRef({ id: file.id, title: file.name })
-      onSelected(file.id)
+      onSelected()
     } catch (e) {
       setConnectError(e instanceof Error ? e.message : 'Failed to connect spreadsheet')
     } finally {
@@ -104,7 +105,7 @@ function SpreadsheetPicker({ accessToken, onSelected }: SpreadsheetPickerProps) 
     <Stack gap="xl">
       <Stack gap="xs">
         <Text fw={500}>First time? Create a new Mood Ledger in your Drive:</Text>
-        <Button onClick={handleCreate} disabled={creating} loading={creating}>
+        <Button onClick={() => void handleCreate()} disabled={creating} loading={creating}>
           {creating ? 'Creating…' : 'Create Mood Ledger'}
         </Button>
         {createError && (
@@ -115,7 +116,12 @@ function SpreadsheetPicker({ accessToken, onSelected }: SpreadsheetPickerProps) 
       </Stack>
       <Stack gap="xs">
         <Text fw={500}>Returning? Pick your existing spreadsheet:</Text>
-        <Button variant="outline" onClick={handleBrowse} disabled={browsing} loading={browsing}>
+        <Button
+          variant="outline"
+          onClick={() => void handleBrowse()}
+          disabled={browsing}
+          loading={browsing}
+        >
           {browsing ? 'Connecting…' : 'Browse Drive'}
         </Button>
         {connectError && (
@@ -128,83 +134,69 @@ function SpreadsheetPicker({ accessToken, onSelected }: SpreadsheetPickerProps) 
   )
 }
 
-export default function SetupScreen({ children }: { children: ReactNode }) {
+export default function SyncBar() {
   const { state, dispatch } = useAuth()
   const { initiateAuth } = useGoogleAuth()
-  const [spreadsheetId, setSpreadsheetId] = useState<string | null>(
-    () => loadSheetRef()?.id ?? null
-  )
+  const [hasSheet, setHasSheet] = useState(() => loadSheetRef() !== null)
 
-  const sheetRef = state.status === 'error' ? loadSheetRef() : null
+  const showSetup = state.status === 'authorised' && !hasSheet
 
-  if (state.status === 'authorised' && spreadsheetId) {
-    return <>{children}</>
-  }
+  // Nothing to show once fully connected
+  if (state.status === 'authorised' && hasSheet) return null
 
-  if (state.status === 'authorised' && !spreadsheetId) {
-    return (
-      <Center mih="100dvh" p="xl">
-        <Stack maw={480} w="100%" gap="lg">
-          <Title order={2}>Set up your spreadsheet</Title>
-          <SpreadsheetPicker
-            accessToken={state.accessToken!}
-            onSelected={(id) => setSpreadsheetId(id)}
-          />
-        </Stack>
-      </Center>
-    )
-  }
-
-  if (state.status === 'restoring' || state.status === 'authorising') {
-    return (
-      <Center mih="100dvh">
-        <Stack align="center" gap="md">
-          <Title order={1}>Mood Journal</Title>
-          <Loader size="sm" />
-          <Text c="dimmed">Reconnecting…</Text>
-        </Stack>
-      </Center>
-    )
-  }
+  const isConnecting = state.status === 'restoring' || state.status === 'authorising'
 
   return (
-    <Center mih="100dvh" p="xl">
-      <Stack maw={400} w="100%" align="center" gap="xl">
-        <Stack align="center" gap="sm">
-          <Title order={1}>Mood Journal</Title>
-          <Text size="lg" c="dimmed" ta="center">
-            Track how you feel, day by day.
+    <>
+      <Box
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          borderTop: '1px solid var(--mantine-color-default-border)',
+          backgroundColor: 'var(--mantine-color-body)',
+          padding: 'var(--mantine-spacing-sm) var(--mantine-spacing-md)',
+          zIndex: 100,
+        }}
+      >
+        <Group justify="space-between" align="center" maw={600} mx="auto">
+          <Text size="sm" c="dimmed">
+            {state.status === 'error'
+              ? state.error
+              : isConnecting
+                ? 'Connecting to Google Drive…'
+                : 'Your entries are saved on this device.'}
           </Text>
-        </Stack>
-
-        {state.status === 'error' ? (
-          <Stack align="center" gap="sm">
-            <Alert color="red" variant="light" w="100%">
-              {state.error}
-            </Alert>
-            {sheetRef && (
-              <Text c="dimmed" size="sm">
-                Your spreadsheet &ldquo;{sheetRef.title}&rdquo; is still connected.
-              </Text>
-            )}
+          {!isConnecting && (
             <Button
+              size="xs"
+              variant={state.status === 'error' ? 'filled' : 'light'}
               onClick={() => {
-                dispatch({ type: 'CLEAR' })
+                if (state.status === 'error') dispatch({ type: 'CLEAR' })
                 initiateAuth()
               }}
             >
-              Reconnect Google Account
+              {state.status === 'error' ? 'Reconnect Google Drive' : 'Sync with Google Drive'}
             </Button>
-          </Stack>
-        ) : (
-          <Stack align="center" gap="sm">
-            <Text size="sm" c="dimmed" ta="center">
-              Connect your Google account to save entries to your own spreadsheet.
-            </Text>
-            <Button onClick={initiateAuth}>Connect Google Account</Button>
-          </Stack>
+          )}
+          {isConnecting && <Loader size="xs" />}
+        </Group>
+      </Box>
+
+      <Modal
+        opened={showSetup}
+        onClose={() => dispatch({ type: 'CLEAR' })}
+        title="Set up Google Drive sync"
+        centered
+      >
+        {state.status === 'authorised' && state.accessToken && (
+          <SpreadsheetPicker
+            accessToken={state.accessToken}
+            onSelected={() => setHasSheet(true)}
+          />
         )}
-      </Stack>
-    </Center>
+      </Modal>
+    </>
   )
 }

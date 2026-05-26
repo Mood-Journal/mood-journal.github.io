@@ -76,18 +76,19 @@ src/
   models/moodEntry.ts       MoodEntry type, Zod schema, factory, row helpers
   services/googleSheets.ts  readEntries, appendEntry, initSheet, createSpreadsheet
   hooks/useGoogleAuth.ts    GIS token client; silent restore; proactive refresh
-  hooks/useEntries.ts       load entries + addEntry; consumes Auth + EntriesContext
+  hooks/useEntries.ts       background Sheets sync + addEntry; consumes Auth + EntriesContext
   context/AuthContext.tsx   auth state machine (idle|restoring|authorising|authorised|error)
-  context/EntriesContext.tsx entries state machine (idle|loading|loaded|saving|error)
-  lib/storage.ts            localStorage helpers; keys: mood-journal-spreadsheet:v1, mood-journal-session-hint:v1
+  context/EntriesContext.tsx entries state machine; loads from localStorage on mount
+  lib/crypto.ts             AES-GCM encrypt/decrypt; key stored in IndexedDB
+  lib/storage.ts            localStorage helpers; encrypted entries + sheet ref + session hint
   components/
-    SetupScreen.tsx         sign-in gate, Drive Picker, create/connect sheet
+    SyncBar.tsx             fixed bottom bar: Drive sync button, sheet setup modal
     LogView/                3-step emotion picker + note + date + save
     HistoryView/            reverse-chronological entry list
   types/google.d.ts         minimal Window augmentation for GIS + Drive Picker
 tests/
   unit/models/              moodEntry pure function tests
-  unit/lib/                 storage localStorage tests
+  unit/lib/                 storage and crypto tests
   integration/              googleSheets fetch-mock tests
 ```
 
