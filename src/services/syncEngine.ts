@@ -5,7 +5,7 @@ import {
   updateEntry as sheetsUpdateEntry,
   deleteEntry as sheetsDeleteEntry,
 } from '@/services/googleSheets'
-import { loadLocalEntries, saveLocalEntries } from '@/lib/storage'
+import { loadLocalEntries, saveLocalEntries, loadTombstones, saveTombstones } from '@/lib/storage'
 import { getPendingToSync, buildMergedEntries, dedupeById } from '@/services/syncReconciler'
 
 // Shared across every caller in the tab. inFlight tracks ids currently being
@@ -40,6 +40,7 @@ async function reconcile(spreadsheetId: string, accessToken: string): Promise<Mo
   // snapshot used for the merge comparison.
   const sheetsEntries = dedupeById(await readEntries(spreadsheetId, accessToken))
   const localEntries = await loadLocalEntries()
+  const tombstones = loadTombstones()
   const sheetsIds = new Set(sheetsEntries.map((e) => e.id))
 
   const pendingToSync = getPendingToSync(localEntries, sheetsIds, inFlight)
@@ -54,6 +55,22 @@ async function reconcile(spreadsheetId: string, accessToken: string): Promise<Mo
     )
   }
 
+  // Propagate local deletions: remove each tombstoned row still present in the
+  // sheet, then drop the tombstone. Deleting by row index shifts the rows below
+  // it, so these must run sequentially — sheetsDeleteEntry re-reads the index
+  // per call. A tombstone whose row is already absent is dropped (nothing to do);
+  // a failed delete is retained so the next sync retries it.
+  const remainingTombstones: string[] = []
+  for (const id of tombstones) {
+    if (!sheetsIds.has(id)) continue
+    try {
+      await sheetsDeleteEntry(spreadsheetId, accessToken, id)
+    } catch {
+      remainingTombstones.push(id)
+    }
+  }
+  saveTombstones(remainingTombstones)
+
   // justSynced: entries just pushed — not yet in sheetsEntries (fetched before push),
   // so they must be injected explicitly, marked synced.
   // retainLocal: entries whose push failed; keep as pending for the next sync attempt.
@@ -65,7 +82,11 @@ async function reconcile(spreadsheetId: string, accessToken: string): Promise<Mo
     (e) => e.syncStatus !== 'synced' && !sheetsIds.has(e.id) && !pushedIds.has(e.id)
   )
 
-  const merged = buildMergedEntries(sheetsEntries, justSynced, retainLocal)
+  // Strip tombstoned ids from the sheet snapshot so a row still pending remote
+  // deletion (delete failed above) is not resurrected into local state.
+  const tombstoneSet = new Set(tombstones)
+  const survivingSheets = sheetsEntries.filter((e) => !tombstoneSet.has(e.id))
+  const merged = buildMergedEntries(survivingSheets, justSynced, retainLocal)
   await saveLocalEntries(merged)
   return merged
 }
@@ -138,11 +159,20 @@ export async function deleteEntry(
   const next = localEntries.filter((e) => e.id !== entryId)
   await saveLocalEntries(next)
 
-  if (spreadsheetId && accessToken && entry?.syncStatus === 'synced') {
-    try {
-      await sheetsDeleteEntry(spreadsheetId, accessToken, entryId)
-    } catch {
-      // Best effort — entry is already removed locally.
+  // Only synced entries exist in the sheet. Record a tombstone first so the
+  // deletion survives across syncs: if the immediate remote delete below fails
+  // or no token is available, the next reconcile retries it rather than
+  // resurrecting the row from the sheet.
+  if (entry?.syncStatus === 'synced') {
+    saveTombstones([...loadTombstones(), entryId])
+
+    if (spreadsheetId && accessToken) {
+      try {
+        await sheetsDeleteEntry(spreadsheetId, accessToken, entryId)
+        saveTombstones(loadTombstones().filter((id) => id !== entryId))
+      } catch {
+        // Best effort — the tombstone keeps the deletion pending for next sync.
+      }
     }
   }
   return { entries: next, error: null }

@@ -3,6 +3,7 @@ import type { MoodEntry } from '@/models/moodEntry'
 
 const SHEET_REF_KEY = 'mood-journal-spreadsheet:v1'
 const ENTRIES_KEY = 'mood-journal-entries:v1'
+const TOMBSTONES_KEY = 'mood-journal-tombstones:v1'
 
 export interface SheetRef {
   id: string
@@ -64,4 +65,23 @@ export async function saveLocalEntries(entries: MoodEntry[]): Promise<void> {
 
 export function clearLocalEntries(): void {
   localStorage.removeItem(ENTRIES_KEY)
+}
+
+// Tombstones record ids of entries deleted locally so a sync can propagate the
+// deletion to the sheet instead of resurrecting the row. Stored as plain ids
+// (random UUIDs) — they carry no mood content, so no encryption is needed.
+export function loadTombstones(): string[] {
+  try {
+    const raw = localStorage.getItem(TOMBSTONES_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((id): id is string => typeof id === 'string')
+  } catch {
+    return []
+  }
+}
+
+export function saveTombstones(ids: string[]): void {
+  localStorage.setItem(TOMBSTONES_KEY, JSON.stringify([...new Set(ids)]))
 }

@@ -6,6 +6,8 @@ import {
   loadLocalEntries,
   saveLocalEntries,
   clearLocalEntries,
+  loadTombstones,
+  saveTombstones,
 } from '../../../src/lib/storage'
 import { encryptString, resetKeyForTesting } from '../../../src/lib/crypto'
 import type { MoodEntry } from '../../../src/models/moodEntry'
@@ -108,5 +110,33 @@ describe('storage — LocalEntries', () => {
     localStorage.setItem('mood-journal-entries:v1', encrypted)
     const loaded = await loadLocalEntries()
     expect(loaded[0].syncStatus).toBe('pending')
+  })
+})
+
+describe('storage — Tombstones', () => {
+  beforeEach(() => localStorage.clear())
+
+  it('returns empty array when none are stored', () => {
+    expect(loadTombstones()).toEqual([])
+  })
+
+  it('round-trips tombstone ids', () => {
+    saveTombstones(['a', 'b'])
+    expect(loadTombstones()).toEqual(['a', 'b'])
+  })
+
+  it('deduplicates ids on save', () => {
+    saveTombstones(['a', 'a', 'b'])
+    expect(loadTombstones()).toEqual(['a', 'b'])
+  })
+
+  it('returns empty array for malformed JSON', () => {
+    localStorage.setItem('mood-journal-tombstones:v1', 'not-json{')
+    expect(loadTombstones()).toEqual([])
+  })
+
+  it('ignores non-string entries', () => {
+    localStorage.setItem('mood-journal-tombstones:v1', JSON.stringify(['a', 3, null]))
+    expect(loadTombstones()).toEqual(['a'])
   })
 })

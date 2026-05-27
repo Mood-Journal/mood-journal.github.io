@@ -3,13 +3,20 @@ import type { MoodEntry } from '../../../src/models/moodEntry'
 
 const h = vi.hoisted(() => {
   let store: MoodEntry[] = []
+  let tombstones: string[] = []
   return {
     getStore: () => store,
     setStore: (next: MoodEntry[]) => {
       store = next
     },
+    getTombstones: () => tombstones,
+    setTombstones: (next: string[]) => {
+      tombstones = next
+    },
     loadLocalEntries: vi.fn(),
     saveLocalEntries: vi.fn(),
+    loadTombstones: vi.fn(),
+    saveTombstones: vi.fn(),
     readEntries: vi.fn(),
     appendEntry: vi.fn(),
     sheetsUpdateEntry: vi.fn(),
@@ -20,6 +27,8 @@ const h = vi.hoisted(() => {
 vi.mock('@/lib/storage', () => ({
   loadLocalEntries: h.loadLocalEntries,
   saveLocalEntries: h.saveLocalEntries,
+  loadTombstones: h.loadTombstones,
+  saveTombstones: h.saveTombstones,
 }))
 
 vi.mock('@/services/googleSheets', () => ({
@@ -62,8 +71,11 @@ const TOKEN = 'token-1'
 beforeEach(() => {
   vi.resetAllMocks()
   h.setStore([])
+  h.setTombstones([])
   h.loadLocalEntries.mockImplementation(async () => [...h.getStore()])
   h.saveLocalEntries.mockImplementation(async (next: MoodEntry[]) => h.setStore(next))
+  h.loadTombstones.mockImplementation(() => [...h.getTombstones()])
+  h.saveTombstones.mockImplementation((next: string[]) => h.setTombstones(next))
   h.readEntries.mockResolvedValue([])
   h.appendEntry.mockResolvedValue(undefined)
   h.sheetsUpdateEntry.mockResolvedValue(undefined)
@@ -170,13 +182,64 @@ describe('deleteEntry', () => {
     const res = await engine.deleteEntry('a', SHEET, TOKEN)
     expect(res.entries.map((e) => e.id)).toEqual(['b'])
     expect(h.sheetsDeleteEntry).toHaveBeenCalledWith(SHEET, TOKEN, 'a')
+    // tombstone is cleared once the remote delete succeeds
+    expect(h.getTombstones()).toEqual([])
   })
 
-  it('skips the sheet delete for a pending entry', async () => {
+  it('skips the sheet delete and tombstone for a pending entry', async () => {
     h.setStore([entry({ id: 'a', syncStatus: 'pending' })])
     const res = await engine.deleteEntry('a', SHEET, TOKEN)
     expect(res.entries).toHaveLength(0)
     expect(h.sheetsDeleteEntry).not.toHaveBeenCalled()
+    expect(h.getTombstones()).toEqual([])
+  })
+
+  it('tombstones a synced entry deleted with no token, without calling the sheet', async () => {
+    h.setStore([entry({ id: 'a', syncStatus: 'synced' })])
+    const res = await engine.deleteEntry('a', SHEET, null)
+    expect(res.entries).toHaveLength(0)
+    expect(h.sheetsDeleteEntry).not.toHaveBeenCalled()
+    expect(h.getTombstones()).toEqual(['a'])
+  })
+
+  it('retains the tombstone when the immediate remote delete fails', async () => {
+    h.setStore([entry({ id: 'a', syncStatus: 'synced' })])
+    h.sheetsDeleteEntry.mockRejectedValue(new Error('Sheets API error: 500'))
+    const res = await engine.deleteEntry('a', SHEET, TOKEN)
+    expect(res.entries).toHaveLength(0)
+    expect(h.getTombstones()).toEqual(['a'])
+  })
+})
+
+describe('runSync deletion propagation', () => {
+  it('deletes a tombstoned row from the sheet and does not resurrect it', async () => {
+    h.setTombstones(['a'])
+    h.readEntries.mockResolvedValue([
+      entry({ id: 'a', syncStatus: 'synced' }),
+      entry({ id: 'b', syncStatus: 'synced' }),
+    ])
+    const merged = await engine.runSync(SHEET, TOKEN)
+    expect(h.sheetsDeleteEntry).toHaveBeenCalledWith(SHEET, TOKEN, 'a')
+    expect(merged.map((e) => e.id)).toEqual(['b'])
+    expect(h.getTombstones()).toEqual([])
+  })
+
+  it('keeps a tombstone and still hides the row when the remote delete fails', async () => {
+    h.setTombstones(['a'])
+    h.readEntries.mockResolvedValue([entry({ id: 'a', syncStatus: 'synced' })])
+    h.sheetsDeleteEntry.mockRejectedValue(new Error('Sheets API error: 500'))
+    const merged = await engine.runSync(SHEET, TOKEN)
+    expect(merged).toHaveLength(0)
+    expect(h.getTombstones()).toEqual(['a'])
+  })
+
+  it('drops a tombstone whose row is already absent from the sheet', async () => {
+    h.setTombstones(['a'])
+    h.readEntries.mockResolvedValue([entry({ id: 'b', syncStatus: 'synced' })])
+    const merged = await engine.runSync(SHEET, TOKEN)
+    expect(h.sheetsDeleteEntry).not.toHaveBeenCalled()
+    expect(merged.map((e) => e.id)).toEqual(['b'])
+    expect(h.getTombstones()).toEqual([])
   })
 })
 
