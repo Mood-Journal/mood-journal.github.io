@@ -5,10 +5,9 @@ const SCOPE = [
   'https://www.googleapis.com/auth/drive.file',
 ].join(' ')
 const GIS_SRC = 'https://accounts.google.com/gsi/client'
-const REFRESH_BUFFER_MS = 5 * 60 * 1000
 
 export function useGoogleAuth() {
-  const { state, dispatch } = useAuth()
+  const { dispatch } = useAuth()
 
   useEffect(() => {
     if (document.querySelector(`script[src="${GIS_SRC}"]`)) return
@@ -18,62 +17,47 @@ export function useGoogleAuth() {
     document.body.appendChild(script)
   }, [])
 
-  const buildClient = useCallback(
-    (silent: boolean) => {
-      const gis = window.google?.accounts.oauth2
-      if (!gis) return null
-      return gis.initTokenClient({
-        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID as string,
-        scope: SCOPE,
-        callback(response) {
-          if (response.access_token) {
-            const expiresAt = Date.now() + (response.expires_in ?? 3600) * 1000
-            dispatch({
-              type: 'SET_AUTHORISED',
-              payload: { accessToken: response.access_token, expiresAt },
-            })
-          } else if (!silent) {
-            dispatch({
-              type: 'SET_ERROR',
-              payload: 'Authorisation failed. Please try again.',
-            })
-          } else {
-            dispatch({ type: 'CLEAR' })
-          }
-        },
+  // Acquire an access token. Google's token model gives short-lived tokens with
+  // no silent renewal: a new one must be requested from a user gesture (a button
+  // press) and on 401. prompt:'' reuses the existing grant, so repeat presses are
+  // silent once the user has consented and a Google session is active.
+  const initiateAuth = useCallback(() => {
+    const gis = window.google?.accounts.oauth2
+    if (!gis) {
+      dispatch({
+        type: 'SET_ERROR',
+        payload: 'Google sign-in is still loading — please try again in a moment.',
       })
-    },
-    [dispatch]
-  )
-
-  useEffect(() => {
-    if (state.status !== 'authorised' || !state.expiresAt) return
-    const delay = state.expiresAt - REFRESH_BUFFER_MS - Date.now()
-
-    function refresh() {
-      const client = buildClient(true)
-      client?.requestAccessToken({ prompt: 'none' })
-    }
-
-    if (delay <= 0) {
-      refresh()
       return
     }
-    const id = setTimeout(refresh, delay)
-    return () => clearTimeout(id)
-  }, [state.status, state.expiresAt, buildClient])
 
-  function initiateAuth() {
-    const client = buildClient(false)
+    const client = gis.initTokenClient({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID as string,
+      scope: SCOPE,
+      prompt: '',
+      callback(response) {
+        if (response.access_token) {
+          dispatch({ type: 'SET_AUTHORISED', payload: { accessToken: response.access_token } })
+        } else {
+          dispatch({ type: 'SET_ERROR', payload: 'Authorisation failed. Please try again.' })
+        }
+      },
+      error_callback(error) {
+        // The user dismissing the popup is not an error worth surfacing.
+        if (error.type === 'popup_closed') {
+          dispatch({ type: 'CLEAR' })
+        } else {
+          dispatch({
+            type: 'SET_ERROR',
+            payload: 'Could not connect to Google Drive. Please try again.',
+          })
+        }
+      },
+    })
+
     dispatch({ type: 'SET_AUTHORISING' })
-    client?.requestAccessToken()
-  }
+    client.requestAccessToken()
+  }, [dispatch])
 
-  function handleApiError(status: number) {
-    if (status === 401) {
-      dispatch({ type: 'SET_ERROR', payload: 'Session expired — Reconnect' })
-    }
-  }
-
-  return { initiateAuth, handleApiError }
+  return { initiateAuth }
 }

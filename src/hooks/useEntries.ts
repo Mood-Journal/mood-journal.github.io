@@ -7,23 +7,35 @@ import type { MoodEntryFields, MoodEntry } from '@/models/moodEntry'
 
 export function useEntries() {
   const { state, dispatch } = useEntriesContext()
-  const { state: authState } = useAuth()
+  const { state: authState, dispatch: authDispatch } = useAuth()
 
-  // Background reconcile when auth'd and a sheet is configured. Depends on
-  // state.sheetId so it re-runs when a sheet is connected while already authorised.
-  // syncEngine.runSync is single-flight, so the parallel hook instances (Log,
-  // History, EditModal) collapse into one network run.
+  // Reconcile with the sheet whenever a (fresh) token arrives and a sheet is
+  // configured. A new token is minted on every Sync press, so this is the path
+  // that pulls remote changes and pushes pending local ones. syncEngine.runSync
+  // is single-flight, so the parallel hook instances (Log, History, EditModal)
+  // collapse into one network run.
   useEffect(() => {
     if (authState.status !== 'authorised' || !authState.accessToken || !state.sheetId) return
+    const sheetId = state.sheetId
+    const accessToken = authState.accessToken
 
+    dispatch({ type: 'SET_SYNCING', payload: true })
     syncEngine
-      .runSync(state.sheetId, authState.accessToken)
+      .runSync(sheetId, accessToken)
       .then((entries) => dispatch({ type: 'SET_ENTRIES', payload: entries }))
       .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : 'Failed to sync with Drive'
-        dispatch({ type: 'SET_ERROR', payload: msg })
+        // Sync failures surface on the Sync bar (auth state), not the entries
+        // status, so a transient Drive error never blanks the user's history.
+        const msg =
+          err instanceof Response
+            ? syncEngine.mapApiError(err.status, sheetId)
+            : err instanceof Error
+              ? err.message
+              : 'Could not sync with Google Drive.'
+        authDispatch({ type: 'SET_ERROR', payload: msg })
       })
-  }, [authState.status, authState.accessToken, dispatch, state.sheetId])
+      .finally(() => dispatch({ type: 'SET_SYNCING', payload: false }))
+  }, [authState.status, authState.accessToken, authDispatch, dispatch, state.sheetId])
 
   const addEntry = useCallback(
     async (fields: MoodEntryFields) => {

@@ -99,3 +99,20 @@ The deploy workflow reads these automatically on every push to `main`.
 |---|---|---|
 | `VITE_GOOGLE_CLIENT_ID` | OAuth sign-in flow | Authenticates the user and obtains an access token scoped to `drive.file` |
 | `VITE_GOOGLE_API_KEY` | Google Drive Picker | Allows the Picker widget to render the user's spreadsheets when connecting an existing sheet |
+
+---
+
+## How sign-in and tokens work
+
+Mood Journal uses the Google Identity Services **token model** (implicit flow). A few consequences worth knowing:
+
+- **Access tokens are short-lived (~1 hour) and there are no refresh tokens.** By design, a new token can only be obtained from a user gesture. The app therefore mints a fresh token each time you press **Sync** — it never refreshes silently in the background. Pressing Sync after the token has expired (or after a page reload) simply requests a new one and then reconciles.
+- After the first consent, repeat Sync presses are silent (no popup) as long as you have an active Google session. If the session has lapsed, the press surfaces the account/consent popup, then continues.
+
+**No additional Google Cloud configuration is required for this** — the flow works with the OAuth client and scope set up above. If you hit an auth error, check these in order:
+
+1. **Authorised JavaScript origins** on the OAuth client ID include the exact origin you're loading from (e.g. `http://localhost:5173` and `https://<your-username>.github.io`). A missing or mismatched origin is the most common cause of token request failures.
+2. Your Google account is listed under **Test users** on the OAuth consent screen (while the app is in *Testing* status).
+3. No redirect URIs and no extra scopes are needed — leaving them empty is correct.
+
+Leaving the consent screen in *Testing* status is fine for a personal tool; the 7-day expiry that applies to *Testing* refresh tokens does not affect this app, since the token model issues no refresh tokens.

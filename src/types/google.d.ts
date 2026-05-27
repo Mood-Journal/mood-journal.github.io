@@ -29,11 +29,13 @@ interface Window {
         initTokenClient(config: {
           client_id: string
           scope: string
+          prompt?: '' | 'none' | 'consent' | 'select_account'
           callback: (response: {
             access_token?: string
             expires_in?: number
             error?: string
           }) => void
+          error_callback?: (error: { type: string; message?: string }) => void
         }): { requestAccessToken(cfg?: { prompt?: string }): void }
       }
     }

@@ -138,15 +138,33 @@ function SpreadsheetPicker({ accessToken, onSelected }: SpreadsheetPickerProps) 
 export default function SyncBar() {
   const { state, dispatch } = useAuth()
   const { initiateAuth } = useGoogleAuth()
-  const { dispatch: entriesDispatch } = useEntriesContext()
+  const { state: entriesState, dispatch: entriesDispatch } = useEntriesContext()
   const [hasSheet, setHasSheet] = useState(() => loadSheetRef() !== null)
 
   const showSetup = state.status === 'authorised' && !hasSheet
-
-  // Nothing to show once fully connected
-  if (state.status === 'authorised' && hasSheet) return null
-
+  const connected = state.status === 'authorised' && hasSheet
   const isConnecting = state.status === 'authorising'
+  const isSyncing = connected && entriesState.syncing
+  const busy = isConnecting || isSyncing
+
+  let message: string
+  if (state.status === 'error') message = state.error ?? 'Something went wrong.'
+  else if (isConnecting) message = 'Connecting to Google Drive…'
+  else if (isSyncing) message = 'Syncing…'
+  else if (connected) message = 'Synced with Google Drive.'
+  else if (hasSheet) message = 'Tap Sync to back up to Google Drive.'
+  else message = 'Your entries are saved on this device.'
+
+  const buttonLabel =
+    state.status === 'error' ? 'Reconnect' : connected ? 'Sync now' : 'Sync with Google Drive'
+
+  // Every press mints a fresh token via a user gesture, then the reconcile in
+  // useEntries runs on the new token. This is the only reliable renewal path —
+  // Google's token model has no silent background refresh.
+  function handleSync() {
+    if (state.status === 'error') dispatch({ type: 'CLEAR' })
+    initiateAuth()
+  }
 
   return (
     <>
@@ -164,25 +182,19 @@ export default function SyncBar() {
       >
         <Group justify="space-between" align="center" maw={600} mx="auto">
           <Text size="sm" c="dimmed">
-            {state.status === 'error'
-              ? state.error
-              : isConnecting
-                ? 'Connecting to Google Drive…'
-                : 'Your entries are saved on this device.'}
+            {message}
           </Text>
-          {!isConnecting && (
+          {busy ? (
+            <Loader size="xs" />
+          ) : (
             <Button
               size="xs"
               variant={state.status === 'error' ? 'filled' : 'light'}
-              onClick={() => {
-                if (state.status === 'error') dispatch({ type: 'CLEAR' })
-                initiateAuth()
-              }}
+              onClick={handleSync}
             >
-              {state.status === 'error' ? 'Reconnect Google Drive' : 'Sync with Google Drive'}
+              {buttonLabel}
             </Button>
           )}
-          {isConnecting && <Loader size="xs" />}
         </Group>
       </Box>
 

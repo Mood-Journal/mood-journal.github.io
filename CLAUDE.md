@@ -61,7 +61,8 @@ Before committing, all of the following MUST pass:
 
 ```
 npm run dev        # start dev server
-npm run build      # production build (Vite/esbuild — no type-check; run `npx tsc --noEmit` separately)
+npm run build      # production build (Vite/esbuild — does NOT type-check)
+npm run typecheck  # tsc --noEmit (run this for type errors; build won't catch them)
 npm run lint       # ESLint
 npm run test       # Vitest watch mode
 npm run test:run   # Vitest single run (used in CI / pre-commit checks)
@@ -77,12 +78,12 @@ src/
   services/googleSheets.ts  readEntries, appendEntry, initSheet, createSpreadsheet
   services/syncReconciler.ts pure helpers: getPendingToSync, buildMergedEntries, dedupeById
   services/syncEngine.ts    framework-agnostic sync: single-flight runSync + add/update/delete; shared in-flight set gives at-most-once append
-  hooks/useGoogleAuth.ts    GIS token client; proactive token refresh (auth starts only on user action)
+  hooks/useGoogleAuth.ts    GIS token client; mints a short-lived access token on each user-triggered Sync (no background refresh)
   hooks/useEntries.ts       thin React adapter over syncEngine; optimistic dispatch + consumes Auth + EntriesContext
   context/AuthContext.tsx   auth state machine (idle|authorising|authorised|error)
   context/EntriesContext.tsx entries state machine; loads from localStorage on mount
   lib/crypto.ts             AES-GCM encrypt/decrypt; key stored in IndexedDB
-  lib/storage.ts            localStorage helpers; encrypted entries + sheet ref + session hint
+  lib/storage.ts            localStorage helpers; encrypted entries + sheet ref
   components/
     SyncBar.tsx             fixed bottom bar: Drive sync button, sheet setup modal
     LogView/                3-step emotion picker + note + date + save

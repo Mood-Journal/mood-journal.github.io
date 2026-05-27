@@ -7,6 +7,9 @@ export interface EntriesState {
   items: MoodEntry[]
   error: string | null
   sheetId: string | null
+  // Drive reconcile in flight. Kept separate from `status` so the Sync bar can
+  // show progress without disabling the Log form or blanking the History list.
+  syncing: boolean
 }
 
 type EntriesAction =
@@ -17,6 +20,7 @@ type EntriesAction =
   | { type: 'DELETE_ENTRY'; payload: string }
   | { type: 'SET_SAVING' }
   | { type: 'SET_ERROR'; payload: string }
+  | { type: 'SET_SYNCING'; payload: boolean }
   | { type: 'RESET' }
   | { type: 'SET_SHEET_ID'; payload: string | null }
 
@@ -26,6 +30,7 @@ function createInitialState(): EntriesState {
     items: [],
     error: null,
     sheetId: loadSheetRef()?.id ?? null,
+    syncing: false,
   }
 }
 
@@ -58,6 +63,8 @@ function entriesReducer(state: EntriesState, action: EntriesAction): EntriesStat
       }
     case 'SET_SAVING':
       return { ...state, status: 'saving' }
+    case 'SET_SYNCING':
+      return { ...state, syncing: action.payload }
     case 'SET_ERROR':
       return { ...state, status: 'error', error: action.payload }
     case 'RESET':
