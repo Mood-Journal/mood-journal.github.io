@@ -61,7 +61,7 @@ Before committing, all of the following MUST pass:
 
 ```
 npm run dev        # start dev server
-npm run build      # type-check + production build
+npm run build      # production build (Vite/esbuild — no type-check; run `npx tsc --noEmit` separately)
 npm run lint       # ESLint
 npm run test       # Vitest watch mode
 npm run test:run   # Vitest single run (used in CI / pre-commit checks)
@@ -78,7 +78,7 @@ src/
   services/syncReconciler.ts pure helpers: getPendingToSync, buildMergedEntries, dedupeById
   services/syncEngine.ts    framework-agnostic sync: single-flight runSync + add/update/delete; shared in-flight set gives at-most-once append
   hooks/useGoogleAuth.ts    GIS token client; silent restore; proactive refresh
-  hooks/useEntries.ts       background Sheets sync + addEntry; pending→synced lifecycle; consumes Auth + EntriesContext
+  hooks/useEntries.ts       thin React adapter over syncEngine; optimistic dispatch + consumes Auth + EntriesContext
   context/AuthContext.tsx   auth state machine (idle|restoring|authorising|authorised|error)
   context/EntriesContext.tsx entries state machine; loads from localStorage on mount
   lib/crypto.ts             AES-GCM encrypt/decrypt; key stored in IndexedDB
