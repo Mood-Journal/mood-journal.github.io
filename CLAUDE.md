@@ -77,9 +77,9 @@ src/
   services/googleSheets.ts  readEntries, appendEntry, initSheet, createSpreadsheet
   services/syncReconciler.ts pure helpers: getPendingToSync, buildMergedEntries, dedupeById
   services/syncEngine.ts    framework-agnostic sync: single-flight runSync + add/update/delete; shared in-flight set gives at-most-once append
-  hooks/useGoogleAuth.ts    GIS token client; silent restore; proactive refresh
+  hooks/useGoogleAuth.ts    GIS token client; proactive token refresh (auth starts only on user action)
   hooks/useEntries.ts       thin React adapter over syncEngine; optimistic dispatch + consumes Auth + EntriesContext
-  context/AuthContext.tsx   auth state machine (idle|restoring|authorising|authorised|error)
+  context/AuthContext.tsx   auth state machine (idle|authorising|authorised|error)
   context/EntriesContext.tsx entries state machine; loads from localStorage on mount
   lib/crypto.ts             AES-GCM encrypt/decrypt; key stored in IndexedDB
   lib/storage.ts            localStorage helpers; encrypted entries + sheet ref + session hint
