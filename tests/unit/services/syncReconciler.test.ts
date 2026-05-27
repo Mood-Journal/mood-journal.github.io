@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getPendingToSync, buildMergedEntries } from '../../../src/services/syncReconciler'
+import { getPendingToSync, buildMergedEntries, dedupeById } from '../../../src/services/syncReconciler'
 import type { MoodEntry } from '../../../src/models/moodEntry'
 
 function entry(overrides: Partial<MoodEntry> & { id: string }): MoodEntry {
@@ -110,5 +110,33 @@ describe('buildMergedEntries', () => {
 
   it('returns empty array for all-empty inputs', () => {
     expect(buildMergedEntries([], [], [])).toEqual([])
+  })
+})
+
+describe('dedupeById', () => {
+  it('collapses rows sharing an id to a single entry', () => {
+    const entries = [entry({ id: 'a' }), entry({ id: 'a' }), entry({ id: 'b' })]
+    const result = dedupeById(entries)
+    expect(result.map((e) => e.id).sort()).toEqual(['a', 'b'])
+  })
+
+  it('keeps the entry with the earliest createdAt on collision', () => {
+    const entries = [
+      entry({ id: 'a', createdAt: '2026-05-27T12:00:00.000Z', note: 'later' }),
+      entry({ id: 'a', createdAt: '2026-05-27T08:00:00.000Z', note: 'earlier' }),
+    ]
+    const result = dedupeById(entries)
+    expect(result).toHaveLength(1)
+    expect(result[0].note).toBe('earlier')
+  })
+
+  it('leaves a duplicate-free list unchanged', () => {
+    const entries = [entry({ id: 'a' }), entry({ id: 'b' }), entry({ id: 'c' })]
+    const result = dedupeById(entries)
+    expect(result.map((e) => e.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('returns empty array for empty input', () => {
+    expect(dedupeById([])).toEqual([])
   })
 })
