@@ -47,28 +47,6 @@ export function useGoogleAuth() {
   )
 
   useEffect(() => {
-    if (state.status !== 'restoring') return
-
-    function attempt(): boolean {
-      const client = buildClient(true)
-      if (!client) return false
-      dispatch({ type: 'SET_AUTHORISING' })
-      client.requestAccessToken({ prompt: 'none' })
-      return true
-    }
-
-    if (!attempt()) {
-      const script = document.querySelector<HTMLScriptElement>(`script[src="${GIS_SRC}"]`)
-      if (!script) return
-      const onLoad = () => {
-        attempt()
-      }
-      script.addEventListener('load', onLoad)
-      return () => script.removeEventListener('load', onLoad)
-    }
-  }, [state.status, buildClient, dispatch])
-
-  useEffect(() => {
     if (state.status !== 'authorised' || !state.expiresAt) return
     const delay = state.expiresAt - REFRESH_BUFFER_MS - Date.now()
 

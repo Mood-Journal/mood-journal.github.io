@@ -146,7 +146,7 @@ export default function SyncBar() {
   // Nothing to show once fully connected
   if (state.status === 'authorised' && hasSheet) return null
 
-  const isConnecting = state.status === 'restoring' || state.status === 'authorising'
+  const isConnecting = state.status === 'authorising'
 
   return (
     <>

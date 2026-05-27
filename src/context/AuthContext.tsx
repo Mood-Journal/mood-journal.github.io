@@ -1,8 +1,7 @@
-import { createContext, useReducer, useContext, useEffect, type ReactNode, type Dispatch } from 'react'
-import { loadSessionHint, saveSessionHint, clearSessionHint } from '@/lib/storage'
+import { createContext, useReducer, useContext, type ReactNode, type Dispatch } from 'react'
 
 export interface AuthState {
-  status: 'idle' | 'restoring' | 'authorising' | 'authorised' | 'error'
+  status: 'idle' | 'authorising' | 'authorised' | 'error'
   accessToken: string | null
   expiresAt: number | null
   error: string | null
@@ -39,13 +38,6 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
   }
 }
 
-function initFromCache(init: AuthState): AuthState {
-  if (loadSessionHint()) {
-    return { ...init, status: 'restoring' }
-  }
-  return init
-}
-
 interface AuthContextValue {
   state: AuthState
   dispatch: Dispatch<AuthAction>
@@ -54,15 +46,7 @@ interface AuthContextValue {
 export const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(authReducer, initialState, initFromCache)
-
-  useEffect(() => {
-    if (state.status === 'authorised' && state.expiresAt) {
-      saveSessionHint({ expiresAt: state.expiresAt })
-    } else if (state.status === 'idle' || state.status === 'error') {
-      clearSessionHint()
-    }
-  }, [state.status, state.expiresAt])
+  const [state, dispatch] = useReducer(authReducer, initialState)
 
   return <AuthContext.Provider value={{ state, dispatch }}>{children}</AuthContext.Provider>
 }
