@@ -76,21 +76,24 @@ export default function LogView() {
     go(to, 'back')
   }
 
-  // Ref so the popstate listener always calls the latest closure without re-subscribing
+  // Ref so the popstate listener always calls the latest closure without re-subscribing.
+  // Assigned in an effect (not during render) so it never updates a ref mid-render.
   const handleBackRef = useRef<() => void>(() => {})
-  handleBackRef.current = () => {
-    switch (step) {
-      case 'level2': goBack('level1'); break
-      case 'level3': goBack('level2'); break
-      case 'note':
-        if (level3 !== null) goBack('level3')
-        else if (level2Node?.children?.length) goBack('level3')
-        else if (level2 !== null) goBack('level2')
-        else if (level1Node?.children?.length) goBack('level2')
-        else goBack('level1')
-        break
+  useEffect(() => {
+    handleBackRef.current = () => {
+      switch (step) {
+        case 'level2': goBack('level1'); break
+        case 'level3': goBack('level2'); break
+        case 'note':
+          if (level3 !== null) goBack('level3')
+          else if (level2Node?.children?.length) goBack('level3')
+          else if (level2 !== null) goBack('level2')
+          else if (level1Node?.children?.length) goBack('level2')
+          else goBack('level1')
+          break
+      }
     }
-  }
+  })
 
   // Push a history marker so the back button stays in-flow; pop it when leaving
   useEffect(() => {
