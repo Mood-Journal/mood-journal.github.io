@@ -75,6 +75,8 @@ src/
   data/emotions.ts          bundled emotion tree + resolveColor helper
   models/moodEntry.ts       MoodEntry type (incl. local-only syncStatus field), Zod schema, factory, row helpers
   services/googleSheets.ts  readEntries, appendEntry, initSheet, createSpreadsheet
+  services/syncReconciler.ts pure helpers: getPendingToSync, buildMergedEntries, dedupeById
+  services/syncEngine.ts    framework-agnostic sync: single-flight runSync + add/update/delete; shared in-flight set gives at-most-once append
   hooks/useGoogleAuth.ts    GIS token client; silent restore; proactive refresh
   hooks/useEntries.ts       background Sheets sync + addEntry; pending→synced lifecycle; consumes Auth + EntriesContext
   context/AuthContext.tsx   auth state machine (idle|restoring|authorising|authorised|error)
@@ -89,6 +91,7 @@ src/
 tests/
   unit/models/              moodEntry pure function tests
   unit/lib/                 storage and crypto tests
+  unit/services/            syncReconciler + syncEngine tests
   integration/              googleSheets fetch-mock tests
 ```
 
