@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext'
 import { createMoodEntry, moodEntryFieldsSchema } from '@/models/moodEntry'
 import { readEntries, appendEntry, updateEntry as sheetsUpdateEntry, deleteEntry as sheetsDeleteEntry } from '@/services/googleSheets'
 import { loadLocalEntries, saveLocalEntries } from '@/lib/storage'
+import { getPendingToSync, buildMergedEntries } from '@/services/syncReconciler'
 import type { MoodEntryFields, MoodEntry } from '@/models/moodEntry'
 
 function mapApiError(status: number, spreadsheetId: string): string {
@@ -12,14 +13,6 @@ function mapApiError(status: number, spreadsheetId: string): string {
     return `Spreadsheet not found — reconnect or create a new one (ID: ${spreadsheetId})`
   if (status === 429) return 'Storage quota exceeded — try again later'
   return `Unexpected error (${status}). Please try again.`
-}
-
-function mergeById(primary: MoodEntry[], secondary: MoodEntry[]): MoodEntry[] {
-  const seen = new Set(primary.map((e) => e.id))
-  const merged = [...primary, ...secondary.filter((e) => !seen.has(e.id))]
-  return merged.sort(
-    (a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)
-  )
 }
 
 export function useEntries() {
@@ -52,10 +45,7 @@ export function useEntries() {
         const localEntries = await loadLocalEntries()
         const sheetsIds = new Set(sheetsEntries.map((e) => e.id))
 
-        // Pending entries not yet in Sheets and not currently being pushed by addEntry
-        const pendingToSync = localEntries.filter(
-          (e) => e.syncStatus !== 'synced' && !sheetsIds.has(e.id) && !inFlightIds.current.has(e.id)
-        )
+        const pendingToSync = getPendingToSync(localEntries, sheetsIds, inFlightIds.current)
 
         let pushedIds = new Set<string>()
         const token = authState.accessToken
@@ -70,13 +60,18 @@ export function useEntries() {
           )
         }
 
-        // Retain entries that are still pending (push failed or in-flight via addEntry).
+        // justSynced: entries just pushed — not yet in sheetsEntries (fetched before push),
+        // so they must be injected explicitly, marked synced.
+        // retainLocal: entries whose push failed; keep as pending for the next sync attempt.
         // Synced entries absent from Sheets are dropped — they were deleted remotely.
+        const justSynced = pendingToSync
+          .filter((e) => pushedIds.has(e.id))
+          .map((e) => ({ ...e, syncStatus: 'synced' as const }))
         const retainLocal = localEntries.filter(
           (e) => e.syncStatus !== 'synced' && !sheetsIds.has(e.id) && !pushedIds.has(e.id)
         )
 
-        const merged = mergeById(sheetsEntries, retainLocal)
+        const merged = buildMergedEntries(sheetsEntries, justSynced, retainLocal)
         await saveLocalEntries(merged)
         dispatch({ type: 'SET_ENTRIES', payload: merged })
       })
@@ -109,11 +104,11 @@ export function useEntries() {
       dispatch({ type: 'SET_SAVING' })
       try {
         await appendEntry(spreadsheetId, accessToken, entry)
-        const syncedItems = newItems.map((e) =>
-          e.id === entry.id ? { ...e, syncStatus: 'synced' as const } : e
+        const syncedEntry = { ...entry, syncStatus: 'synced' as const }
+        dispatch({ type: 'UPDATE_ENTRY', payload: syncedEntry })
+        await saveLocalEntries(
+          itemsRef.current.map((e) => (e.id === entry.id ? syncedEntry : e))
         )
-        dispatch({ type: 'SET_ENTRIES', payload: syncedItems })
-        await saveLocalEntries(syncedItems)
       } catch (err: unknown) {
         let message = 'Saved locally. Could not sync to Drive — try again later.'
         if (err instanceof Response) {
@@ -142,7 +137,7 @@ export function useEntries() {
       dispatch({ type: 'SET_SAVING' })
       try {
         await sheetsUpdateEntry(spreadsheetId, accessToken, updated)
-        dispatch({ type: 'SET_ENTRIES', payload: newItems })
+        dispatch({ type: 'UPDATE_ENTRY', payload: updated })
       } catch (err: unknown) {
         let message = 'Saved locally. Could not sync to Drive — try again later.'
         if (err instanceof Response) {
