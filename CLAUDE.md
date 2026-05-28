@@ -54,7 +54,7 @@ Before committing, all of the following MUST pass:
 | Forms | `mantine-form-zod-resolver` + Zod v3 |
 | Auth | Google Identity Services (GIS) token client |
 | Data | Google Sheets REST API |
-| Testing | Vitest + Testing Library |
+| Testing | Vitest + Testing Library (unit/integration); Playwright (e2e) |
 | Deploy | GitHub Pages (`npm run deploy`) |
 
 ## Commands
@@ -66,6 +66,7 @@ npm run typecheck  # tsc --noEmit (run this for type errors; build won't catch t
 npm run lint       # ESLint
 npm run test       # Vitest watch mode
 npm run test:run   # Vitest single run (used in CI / pre-commit checks)
+npm run test:e2e   # Playwright e2e tests (starts dev server automatically)
 npm run deploy     # build then push dist/ to gh-pages branch
 ```
 
@@ -95,6 +96,9 @@ tests/
   unit/lib/                 storage and crypto tests
   unit/services/            syncReconciler + syncEngine tests
   integration/              googleSheets fetch-mock tests
+e2e/
+  fixtures/google.ts        setupGoogleMocks + SheetMock — stubs GIS auth, localStorage sheetRef, and sheets.googleapis.com routes
+  sync.spec.ts              sync flow tests
 ```
 
 ## Environment Variables
@@ -106,6 +110,38 @@ Copy `.env.example` to `.env.local` and fill in:
 ## Reference
 
 A structurally identical app (`arc`) lives at `/Users/andyh/Claude/arc`. When adapting patterns — auth flow, Sheets service, test structure — read that project first.
+
+## E2E Tests
+
+E2E tests live in `e2e/` and run with Playwright against the dev server (`npm run test:e2e`).
+
+### Google mock fixture
+
+Every test calls `setupGoogleMocks(page, { initialRows? })` before `page.goto('/')`. It:
+
+- Pre-seeds `localStorage` with a fake `sheetRef` so the "Set up Google Drive" modal is skipped
+- Injects a `window.google.accounts.oauth2` stub that fires the token callback synchronously on each auth request
+- Routes all `sheets.googleapis.com` requests to a stateful in-memory sheet
+
+`setupGoogleMocks` returns a `SheetMock`:
+
+| Method | Description |
+|---|---|
+| `rows()` | Current in-memory rows (excludes the header) |
+| `appendCount()` | Number of append calls received |
+| `deleteRow(id)` | Remove a row by id — simulates remote deletion before the next sync |
+
+Seed rows follow the sheet column order: `[id, date, level1, level2, level3, note, createdAt]`.
+
+### Sync button labels
+
+The SyncBar button label changes with auth state:
+
+| State | Label |
+|---|---|
+| Not yet authenticated | `Sync with Google Drive` |
+| Authenticated (subsequent syncs) | `Sync now` |
+| Auth error | `Reconnect` |
 
 ## Git commits
 

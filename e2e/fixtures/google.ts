@@ -7,6 +7,7 @@ const HEADER = ['id', 'date', 'level1', 'level2', 'level3', 'note', 'createdAt']
 export interface SheetMock {
   appendCount(): number
   rows(): string[][]
+  deleteRow(id: string): void
 }
 
 /**
@@ -91,5 +92,9 @@ export async function setupGoogleMocks(
   return {
     appendCount: () => appendCallCount,
     rows: () => [...sheetRows],
+    deleteRow: (id: string) => {
+      const idx = sheetRows.findIndex((r) => r[0] === id)
+      if (idx !== -1) sheetRows.splice(idx, 1)
+    },
   }
 }

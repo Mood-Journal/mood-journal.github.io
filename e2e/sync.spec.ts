@@ -13,6 +13,27 @@ const SHEET_SEED_ROW = [
   '2026-05-27T09:00:00.000Z',
 ]
 
+test('entry deleted from sheet is removed locally on sync', async ({ page }) => {
+  const sheet = await setupGoogleMocks(page, { initialRows: [SHEET_SEED_ROW] })
+  await page.goto('/')
+
+  await page.getByRole('tab', { name: 'History' }).click()
+
+  // First sync: pulls the seed row into local state as synced
+  await page.getByRole('button', { name: 'Sync with Google Drive' }).click()
+  await expect(page.getByText('Synced with Google Drive.')).toBeVisible()
+  await expect(page.getByText('Entry from the cloud')).toHaveCount(1)
+
+  // Simulate remote deletion — row is gone from the sheet before the next sync
+  sheet.deleteRow(SHEET_SEED_ROW[0])
+  expect(sheet.rows()).toHaveLength(0)
+
+  // Second sync: synced entry absent from the sheet is dropped from local state
+  await page.getByRole('button', { name: 'Sync now' }).click()
+  await expect(page.getByText('Synced with Google Drive.')).toBeVisible()
+  await expect(page.getByText('Entry from the cloud')).toHaveCount(0)
+})
+
 test('creates entry, syncs once, no duplicates on second sync', async ({ page }) => {
   const sheet = await setupGoogleMocks(page, { initialRows: [SHEET_SEED_ROW] })
   await page.goto('/')
