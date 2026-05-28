@@ -8,6 +8,8 @@ import type { MoodEntryFields, MoodEntry } from '@/models/moodEntry'
 export function useEntries() {
   const { state, dispatch } = useEntriesContext()
   const { state: authState } = useAuth()
+  const accessToken = authState.accessToken
+  const sheetId = state.sheetId
 
   const addEntry = useCallback(
     async (fields: MoodEntryFields) => {
@@ -17,45 +19,37 @@ export function useEntries() {
       const entry = createMoodEntry(fields)
       dispatch({ type: 'APPEND_ENTRY', payload: entry })
 
-      const { accessToken } = authState
-      const spreadsheetId = state.sheetId
-      if (accessToken && spreadsheetId) dispatch({ type: 'SET_SAVING' })
+      if (accessToken && sheetId) dispatch({ type: 'SET_SAVING' })
 
-      const { entries, error } = await syncEngine.addEntry(entry, spreadsheetId, accessToken)
+      const { entries, error } = await syncEngine.addEntry(entry, sheetId, accessToken)
       if (error) dispatch({ type: 'SET_ERROR', payload: error })
       else dispatch({ type: 'SET_ENTRIES', payload: entries })
     },
-    [authState, dispatch, state.sheetId]
+    [accessToken, dispatch, sheetId]
   )
 
   const updateEntry = useCallback(
     async (updated: MoodEntry) => {
       dispatch({ type: 'UPDATE_ENTRY', payload: updated })
 
-      const { accessToken } = authState
-      const spreadsheetId = state.sheetId
-      if (accessToken && spreadsheetId && updated.syncStatus === 'synced') {
+      if (accessToken && sheetId && updated.syncStatus === 'synced') {
         dispatch({ type: 'SET_SAVING' })
       }
 
-      const { entries, error } = await syncEngine.updateEntry(updated, spreadsheetId, accessToken)
+      const { entries, error } = await syncEngine.updateEntry(updated, sheetId, accessToken)
       if (error) dispatch({ type: 'SET_ERROR', payload: error })
       else dispatch({ type: 'SET_ENTRIES', payload: entries })
     },
-    [authState, dispatch, state.sheetId]
+    [accessToken, dispatch, sheetId]
   )
 
   const deleteEntry = useCallback(
     async (entryId: string) => {
       dispatch({ type: 'DELETE_ENTRY', payload: entryId })
-      const { entries } = await syncEngine.deleteEntry(
-        entryId,
-        state.sheetId,
-        authState.accessToken
-      )
+      const { entries } = await syncEngine.deleteEntry(entryId, sheetId, accessToken)
       dispatch({ type: 'SET_ENTRIES', payload: entries })
     },
-    [authState, dispatch, state.sheetId]
+    [accessToken, dispatch, sheetId]
   )
 
   return {
