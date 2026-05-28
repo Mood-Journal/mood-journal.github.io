@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Alert, Skeleton, Stack, Text, Title } from '@mantine/core'
 import { useEntries } from '@/hooks/useEntries'
 import type { MoodEntry } from '@/models/moodEntry'
@@ -10,6 +10,16 @@ export default function HistoryView() {
   const { entries, status, error } = useEntries()
   const [viewing, setViewing] = useState<MoodEntry | null>(null)
   const [editing, setEditing] = useState<MoodEntry | null>(null)
+
+  // Sort here because APPEND_ENTRY prepends unconditionally; a past-dated
+  // entry would otherwise appear at the top until the next sync runs mergeById.
+  const sortedEntries = useMemo(
+    () =>
+      [...entries].sort(
+        (a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)
+      ),
+    [entries]
+  )
 
   return (
     <Stack gap="md" py="md">
@@ -35,9 +45,7 @@ export default function HistoryView() {
 
       {(status === 'loaded' || status === 'saving') && entries.length > 0 && (
         <Stack gap="sm">
-          {/* Sort here because APPEND_ENTRY prepends unconditionally; a past-dated
-              entry would otherwise appear at the top until the next sync runs mergeById. */}
-          {[...entries].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)).map((entry) => (
+          {sortedEntries.map((entry) => (
             <EntryCard key={entry.id} entry={entry} onSelect={() => setViewing(entry)} />
           ))}
         </Stack>

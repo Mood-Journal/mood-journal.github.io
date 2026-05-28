@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   Alert,
   Box,
@@ -147,7 +147,10 @@ export default function SyncBar() {
   const isSyncing = connected && entriesState.syncing
   const busy = isConnecting || isSyncing
 
-  const pendingCount = entriesState.items.filter((e) => e.syncStatus === 'pending').length
+  const pendingCount = useMemo(
+    () => entriesState.items.reduce((n, e) => (e.syncStatus === 'pending' ? n + 1 : n), 0),
+    [entriesState.items]
+  )
   const pendingLabel = (
     <>
       Sync <strong>{pendingCount}</strong> {pendingCount === 1 ? 'entry' : 'entries'} with Google
