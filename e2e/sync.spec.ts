@@ -151,3 +151,35 @@ test('deleting a pending entry does not append or delete anything in the sheet',
   expect(sheet.deleteCount()).toBe(0)
   expect(sheet.rows()).toHaveLength(0)
 })
+
+test('multiple pending entries are all pushed in one sync pass', async ({ page }) => {
+  const sheet = await setupGoogleMocks(page)
+  await page.goto('/')
+
+  // Create two entries before syncing — both land as pending in IndexedDB
+  await createEntry(page, 'First pending entry')
+  await createEntry(page, 'Second pending entry')
+
+  await page.getByRole('tab', { name: 'History' }).click()
+  await expect(page.getByText('First pending entry')).toHaveCount(1)
+  await expect(page.getByText('Second pending entry')).toHaveCount(1)
+
+  // First sync: both pending entries pushed to the sheet in one reconcile pass
+  await page.getByRole('button', { name: 'Sync with Google Drive' }).click()
+  await expect(page.getByText('Synced with Google Drive.')).toBeVisible()
+
+  expect(sheet.appendCount()).toBe(2)
+  expect(sheet.rows()).toHaveLength(2)
+  await expect(page.getByText('First pending entry')).toHaveCount(1)
+  await expect(page.getByText('Second pending entry')).toHaveCount(1)
+
+  // Second sync: both entries already synced — no further appends, no duplicates
+  const readReq = page.waitForRequest(
+    (req) => req.url().includes('sheets.googleapis.com') && req.method() === 'GET',
+  )
+  await page.getByRole('button', { name: 'Sync now' }).click()
+  await (await readReq).response()
+
+  expect(sheet.appendCount()).toBe(2)
+  expect(sheet.rows()).toHaveLength(2)
+})
