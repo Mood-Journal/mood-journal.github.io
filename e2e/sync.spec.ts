@@ -183,3 +183,37 @@ test('multiple pending entries are all pushed in one sync pass', async ({ page }
   expect(sheet.appendCount()).toBe(2)
   expect(sheet.rows()).toHaveLength(2)
 })
+
+test('editing a synced entry updates the sheet row without appending a new one', async ({ page }) => {
+  const sheet = await setupGoogleMocks(page, { initialRows: [SHEET_SEED_ROW] })
+  await page.goto('/')
+
+  await page.getByRole('tab', { name: 'History' }).click()
+
+  // Pull the cloud entry into local state as synced
+  await page.getByRole('button', { name: 'Sync with Google Drive' }).click()
+  await expect(page.getByText('Synced with Google Drive.')).toBeVisible()
+  await expect(page.getByText('Entry from the cloud')).toHaveCount(1)
+
+  // Open entry → ViewModal → Edit → EditModal (opens at note step with existing note)
+  await page.getByText('Entry from the cloud').click()
+  await page.getByRole('button', { name: 'Edit' }).click()
+
+  await page.getByLabel('Note (optional)').fill('Updated note')
+
+  // Track the PUT request that updateEntry issues
+  const putReq = page.waitForRequest(
+    (req) => req.method() === 'PUT' && req.url().includes('/values/'),
+  )
+  await page.getByRole('button', { name: 'Save' }).click()
+  await (await putReq).response()
+
+  // UI reflects the new note
+  await expect(page.getByText('Updated note')).toHaveCount(1)
+  await expect(page.getByText('Entry from the cloud')).toHaveCount(0)
+
+  // Sheet has one row updated in place — no extra append
+  expect(sheet.appendCount()).toBe(0)
+  expect(sheet.rows()).toHaveLength(1)
+  expect(sheet.rows()[0][5]).toBe('Updated note') // column 5 = note
+})
