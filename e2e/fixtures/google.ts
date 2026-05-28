@@ -6,6 +6,7 @@ const HEADER = ['id', 'date', 'level1', 'level2', 'level3', 'note', 'createdAt']
 
 export interface SheetMock {
   appendCount(): number
+  deleteCount(): number
   rows(): string[][]
   deleteRow(id: string): void
 }
@@ -31,6 +32,7 @@ export async function setupGoogleMocks(
 ): Promise<SheetMock> {
   const sheetRows: string[][] = [...(options.initialRows ?? [])]
   let appendCallCount = 0
+  let deleteCallCount = 0
 
   await page.addInitScript(
     ({ key, ref }: { key: string; ref: { id: string; title: string } }) => {
@@ -71,13 +73,42 @@ export async function setupGoogleMocks(
       return
     }
 
-    if (url.includes(':append')) {
+    if (method === 'POST' && url.includes(':append')) {
       const body = JSON.parse(route.request().postData() ?? '{}') as {
         values?: string[][]
       }
       if (body.values) sheetRows.push(...body.values)
       appendCallCount++
       await route.fulfill({ json: { updates: {} } })
+      return
+    }
+
+    // updateEntry: PUT /values/Entries!A{rowIndex}:G{rowIndex}
+    // rowIndex is 1-based in the full sheet (row 1 = header, row 2 = first data row).
+    if (method === 'PUT' && url.includes('/values/')) {
+      const match = url.match(/A(\d+):G\d+/)
+      if (match) {
+        const sheetIdx = parseInt(match[1]) - 2 // 1-based full-sheet row → 0-based sheetRows
+        const body = JSON.parse(route.request().postData() ?? '{}') as { values?: string[][] }
+        if (body.values?.[0] && sheetIdx >= 0) sheetRows[sheetIdx] = body.values[0]
+      }
+      await route.fulfill({ json: { updatedRows: 1 } })
+      return
+    }
+
+    // deleteEntry: POST :batchUpdate with deleteDimension
+    // startIndex is 0-based in the full sheet (0 = header, 1 = first data row).
+    if (method === 'POST' && url.includes(':batchUpdate')) {
+      const body = JSON.parse(route.request().postData() ?? '{}') as {
+        requests?: Array<{ deleteDimension?: { range: { startIndex: number } } }>
+      }
+      const req = body.requests?.[0]
+      if (req?.deleteDimension) {
+        const { startIndex } = req.deleteDimension.range
+        sheetRows.splice(startIndex - 1, 1) // subtract 1 to skip the header
+        deleteCallCount++
+      }
+      await route.fulfill({ json: { replies: [] } })
       return
     }
 
@@ -91,6 +122,7 @@ export async function setupGoogleMocks(
 
   return {
     appendCount: () => appendCallCount,
+    deleteCount: () => deleteCallCount,
     rows: () => [...sheetRows],
     deleteRow: (id: string) => {
       const idx = sheetRows.findIndex((r) => r[0] === id)
