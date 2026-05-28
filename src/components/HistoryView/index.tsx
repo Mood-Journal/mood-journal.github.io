@@ -37,7 +37,7 @@ export default function HistoryView() {
         <Stack gap="sm">
           {/* Sort here because APPEND_ENTRY prepends unconditionally; a past-dated
               entry would otherwise appear at the top until the next sync runs mergeById. */}
-          {[...entries].sort((a, b) => b.date.localeCompare(a.date)).map((entry) => (
+          {[...entries].sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)).map((entry) => (
             <EntryCard key={entry.id} entry={entry} onSelect={() => setViewing(entry)} />
           ))}
         </Stack>
