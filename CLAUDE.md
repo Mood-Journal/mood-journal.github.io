@@ -76,7 +76,7 @@ npm run deploy     # build then push dist/ to gh-pages branch
 src/
   data/emotions.ts          bundled emotion tree + resolveColor helper
   models/moodEntry.ts       MoodEntry type (incl. local-only syncStatus field), Zod schema, factory, row helpers
-  services/googleSheets.ts  readEntries, appendEntry, initSheet, createSpreadsheet
+  services/googleSheets.ts  readEntries, appendEntry, updateEntry, deleteEntry, initSheet, createSpreadsheet
   services/syncReconciler.ts pure helpers: getPendingToSync, buildMergedEntries, dedupeById
   services/syncEngine.ts    framework-agnostic sync: single-flight runSync + add/update/delete; shared in-flight set gives at-most-once append
   hooks/useGoogleAuth.ts    GIS token client; mints a short-lived access token on each user-triggered Sync (no background refresh)
