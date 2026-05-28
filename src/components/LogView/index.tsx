@@ -121,6 +121,14 @@ export default function LogView() {
     go('level1', 'forward')
   }
 
+  // The 1.5 s "Saved!" delay before reset can outlive the component if the
+  // user switches tabs immediately after saving. Tracking the handle lets the
+  // unmount cleanup cancel the pending reset.
+  const savedTimer = useRef<number | null>(null)
+  useEffect(() => () => {
+    if (savedTimer.current !== null) clearTimeout(savedTimer.current)
+  }, [])
+
   async function handleSave() {
     if (!level1) return
     await addEntry({
@@ -131,7 +139,10 @@ export default function LogView() {
       note: note.trim() || undefined,
     })
     setSaved(true)
-    setTimeout(reset, 1500)
+    savedTimer.current = window.setTimeout(() => {
+      savedTimer.current = null
+      reset()
+    }, 1500)
   }
 
   const isSaving = status === 'saving'
