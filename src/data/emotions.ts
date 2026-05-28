@@ -217,19 +217,30 @@ export const EMOTIONS: EmotionTree = [
   },
 ]
 
+// Flatten the tree once at module load: O(1) color lookup replaces the
+// per-call triple-nested scan. Labels are not globally unique (e.g.
+// "Overwhelmed" appears under two different roots with different colors),
+// so the loop preserves DFS first-match semantics with setIfAbsent.
+const colorByLabel = new Map<string, MantineColor>()
+const setIfAbsent = (label: string, color: MantineColor) => {
+  if (!colorByLabel.has(label)) colorByLabel.set(label, color)
+}
+for (const root of EMOTIONS) {
+  const color = root.color ?? 'gray'
+  setIfAbsent(root.label, color)
+  root.children?.forEach((child) => {
+    setIfAbsent(child.label, color)
+    child.children?.forEach((grandchild) => setIfAbsent(grandchild.label, color))
+  })
+}
+
 export function resolveColor(label: string): MantineColor {
-  for (const root of EMOTIONS) {
-    if (root.label === label) return root.color ?? 'gray'
-    if (root.children) {
-      for (const child of root.children) {
-        if (child.label === label) return root.color ?? 'gray'
-        if (child.children) {
-          for (const grandchild of child.children) {
-            if (grandchild.label === label) return root.color ?? 'gray'
-          }
-        }
-      }
-    }
-  }
-  return 'gray'
+  return colorByLabel.get(label) ?? 'gray'
+}
+
+// Level-1 (root) labels are globally unique, so an O(1) map is safe here.
+const level1ByLabel = new Map<string, EmotionNode>(EMOTIONS.map((e) => [e.label, e]))
+
+export function findLevel1Node(label: string | null): EmotionNode | undefined {
+  return label === null ? undefined : level1ByLabel.get(label)
 }

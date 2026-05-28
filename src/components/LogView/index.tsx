@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Button,
@@ -12,7 +12,7 @@ import {
   Title,
   UnstyledButton,
 } from '@mantine/core'
-import { EMOTIONS, resolveColor } from '@/data/emotions'
+import { EMOTIONS, findLevel1Node, resolveColor } from '@/data/emotions'
 import { useEntries } from '@/hooks/useEntries'
 import EmotionCard from './EmotionCard'
 import EmotionPicker from './EmotionPicker'
@@ -43,8 +43,11 @@ export default function LogView() {
   const [saved, setSaved] = useState(false)
   const [discardOpen, setDiscardOpen] = useState(false)
 
-  const level1Node = EMOTIONS.find((e) => e.label === level1)
-  const level2Node = level1Node?.children?.find((e) => e.label === level2)
+  const level1Node = useMemo(() => findLevel1Node(level1), [level1])
+  const level2Node = useMemo(
+    () => level1Node?.children?.find((e) => e.label === level2),
+    [level1Node, level2]
+  )
   const rootColor = level1 ? resolveColor(level1) : 'violet'
 
   function go(nextStep: Step, dir: 'forward' | 'back') {
@@ -57,7 +60,7 @@ export default function LogView() {
     setLevel1(label)
     setLevel2(null)
     setLevel3(null)
-    const node = EMOTIONS.find((e) => e.label === label)
+    const node = findLevel1Node(label)
     go(node?.children?.length ? 'level2' : 'note', 'forward')
   }
 
