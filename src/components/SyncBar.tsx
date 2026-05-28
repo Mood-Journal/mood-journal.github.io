@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import {
   Alert,
   Box,
@@ -147,13 +147,21 @@ export default function SyncBar() {
   const isSyncing = connected && entriesState.syncing
   const busy = isConnecting || isSyncing
 
-  let message: string
+  const pendingCount = entriesState.items.filter((e) => e.syncStatus === 'pending').length
+  const pendingLabel = (
+    <>
+      Sync <strong>{pendingCount}</strong> {pendingCount === 1 ? 'entry' : 'entries'} with Google
+      Drive.
+    </>
+  )
+
+  let message: React.ReactNode
   if (state.status === 'error') message = state.error ?? 'Something went wrong.'
   else if (isConnecting) message = 'Connecting to Google Drive…'
   else if (isSyncing) message = 'Syncing…'
-  else if (connected) message = 'Synced with Google Drive.'
-  else if (hasSheet) message = 'Tap Sync to back up to Google Drive.'
-  else message = 'Your entries are saved on this device.'
+  else if (connected) message = pendingCount > 0 ? pendingLabel : 'Synced with Google Drive.'
+  else if (hasSheet) message = pendingCount > 0 ? pendingLabel : 'Tap Sync to back up to Google Drive.'
+  else message = pendingCount > 0 ? pendingLabel : 'Your entries are saved on this device.'
 
   const buttonLabel =
     state.status === 'error' ? 'Reconnect' : connected ? 'Sync now' : 'Sync with Google Drive'
