@@ -102,11 +102,27 @@ export default function LogView() {
     }
   })
 
-  // Push a history marker so the back button stays in-flow; pop it when leaving
+  // Maintain a single history marker while the flow is active. Pushing one per
+  // step transition stacked them so a save left orphan entries in the history;
+  // popping back to level1 now pops the marker too, leaving history clean.
+  const markerActive = useRef(false)
   useEffect(() => {
-    if (step === 'level1') return
-    history.pushState({ moodJournalInterceptor: true }, '')
-    const onPop = () => handleBackRef.current()
+    if (step === 'level1') {
+      if (markerActive.current) {
+        markerActive.current = false
+        history.back()
+      }
+      return
+    }
+    if (!markerActive.current) {
+      history.pushState({ moodJournalInterceptor: true }, '')
+      markerActive.current = true
+    }
+    const onPop = () => {
+      // Browser already popped the marker — reflect that and let goBack drive the UI.
+      markerActive.current = false
+      handleBackRef.current()
+    }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
   }, [step])
