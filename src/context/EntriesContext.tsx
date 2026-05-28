@@ -1,6 +1,8 @@
 import { createContext, useReducer, useContext, useEffect, type ReactNode, type Dispatch } from 'react'
 import type { MoodEntry } from '@/models/moodEntry'
 import { loadLocalEntries, loadSheetRef } from '@/lib/storage'
+import { useAuth } from './AuthContext'
+import * as syncEngine from '@/services/syncEngine'
 
 export interface EntriesState {
   status: 'idle' | 'loading' | 'loaded' | 'saving' | 'error'
@@ -83,6 +85,10 @@ const EntriesContext = createContext<EntriesContextValue | null>(null)
 
 export function EntriesProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(entriesReducer, null, createInitialState)
+  const { state: authState, dispatch: authDispatch } = useAuth()
+  const sheetId = state.sheetId
+  const accessToken = authState.accessToken
+  const authStatus = authState.status
 
   useEffect(() => {
     dispatch({ type: 'SET_LOADING' })
@@ -90,6 +96,28 @@ export function EntriesProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'SET_ENTRIES', payload: entries })
     })
   }, [])
+
+  // Single reconcile effect owned by the provider — consumers used to each
+  // register one, so an auth/sheet change dispatched SET_ENTRIES once per
+  // mounted consumer.
+  useEffect(() => {
+    if (authStatus !== 'authorised' || !accessToken || !sheetId) return
+
+    dispatch({ type: 'SET_SYNCING', payload: true })
+    syncEngine
+      .runSync(sheetId, accessToken)
+      .then((entries) => dispatch({ type: 'SET_ENTRIES', payload: entries }))
+      .catch((err: unknown) => {
+        const msg =
+          err instanceof Response
+            ? syncEngine.mapApiError(err.status, sheetId)
+            : err instanceof Error
+              ? err.message
+              : 'Could not sync with Google Drive.'
+        authDispatch({ type: 'SET_ERROR', payload: msg })
+      })
+      .finally(() => dispatch({ type: 'SET_SYNCING', payload: false }))
+  }, [authStatus, accessToken, sheetId, authDispatch])
 
   return (
     <EntriesContext.Provider value={{ state, dispatch }}>{children}</EntriesContext.Provider>
