@@ -92,6 +92,28 @@ export async function saveLocalEntries(entries: MoodEntry[]): Promise<void> {
   }
 }
 
+// Targeted write for single-entry mutations. Avoids the clear+rewrite-all
+// cost of saveLocalEntries, which scales O(N) per save and breaks the page-load
+// budget once the journal grows.
+export async function putLocalEntry(entry: MoodEntry): Promise<void> {
+  try {
+    const ciphertext = await encryptString(JSON.stringify(entry))
+    const db = await openDb()
+    await runWriteTxn(db, STORE_ENTRIES, (store) => store.put(ciphertext, entry.id))
+  } catch {
+    // Best effort — in-memory state still reflects the mutation.
+  }
+}
+
+export async function deleteLocalEntry(id: string): Promise<void> {
+  try {
+    const db = await openDb()
+    await runWriteTxn(db, STORE_ENTRIES, (store) => store.delete(id))
+  } catch {
+    // Best effort.
+  }
+}
+
 export async function clearLocalEntries(): Promise<void> {
   try {
     const db = await openDb()

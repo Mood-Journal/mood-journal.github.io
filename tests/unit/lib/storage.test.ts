@@ -6,6 +6,8 @@ import {
   clearSheetRef,
   loadLocalEntries,
   saveLocalEntries,
+  putLocalEntry,
+  deleteLocalEntry,
   clearLocalEntries,
   loadTombstones,
   saveTombstones,
@@ -140,6 +142,39 @@ describe('storage — LocalEntries', () => {
     await saveLocalEntries([SAMPLE_ENTRY])
     await clearLocalEntries()
     expect(await loadLocalEntries()).toEqual([])
+  })
+
+  it('putLocalEntry inserts a new entry without touching the rest', async () => {
+    await saveLocalEntries([SAMPLE_ENTRY])
+    await putLocalEntry({ ...SAMPLE_ENTRY, id: 'entry-2', date: '2026-05-25' })
+    const loaded = await loadLocalEntries()
+    expect(loaded).toHaveLength(2)
+    expect(loaded.map((e) => e.id).sort()).toEqual(['entry-1', 'entry-2'])
+  })
+
+  it('putLocalEntry overwrites an existing entry with the same id', async () => {
+    await saveLocalEntries([SAMPLE_ENTRY])
+    await putLocalEntry({ ...SAMPLE_ENTRY, note: 'updated' })
+    const loaded = await loadLocalEntries()
+    expect(loaded).toHaveLength(1)
+    expect(loaded[0].note).toBe('updated')
+  })
+
+  it('deleteLocalEntry removes only the matching id', async () => {
+    await saveLocalEntries([
+      SAMPLE_ENTRY,
+      { ...SAMPLE_ENTRY, id: 'entry-2', date: '2026-05-25' },
+    ])
+    await deleteLocalEntry('entry-1')
+    const loaded = await loadLocalEntries()
+    expect(loaded.map((e) => e.id)).toEqual(['entry-2'])
+  })
+
+  it('deleteLocalEntry is a no-op when the id is absent', async () => {
+    await saveLocalEntries([SAMPLE_ENTRY])
+    await deleteLocalEntry('nope')
+    const loaded = await loadLocalEntries()
+    expect(loaded.map((e) => e.id)).toEqual(['entry-1'])
   })
 
   it('migrates entries without syncStatus to pending', async () => {

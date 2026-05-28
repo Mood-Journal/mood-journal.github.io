@@ -15,6 +15,8 @@ const h = vi.hoisted(() => {
     },
     loadLocalEntries: vi.fn(),
     saveLocalEntries: vi.fn(),
+    putLocalEntry: vi.fn(),
+    deleteLocalEntry: vi.fn(),
     loadTombstones: vi.fn(),
     saveTombstones: vi.fn(),
     readEntries: vi.fn(),
@@ -27,6 +29,8 @@ const h = vi.hoisted(() => {
 vi.mock('@/lib/storage', () => ({
   loadLocalEntries: h.loadLocalEntries,
   saveLocalEntries: h.saveLocalEntries,
+  putLocalEntry: h.putLocalEntry,
+  deleteLocalEntry: h.deleteLocalEntry,
   loadTombstones: h.loadTombstones,
   saveTombstones: h.saveTombstones,
 }))
@@ -74,6 +78,16 @@ beforeEach(() => {
   h.setTombstones([])
   h.loadLocalEntries.mockImplementation(async () => [...h.getStore()])
   h.saveLocalEntries.mockImplementation(async (next: MoodEntry[]) => h.setStore(next))
+  h.putLocalEntry.mockImplementation(async (e: MoodEntry) => {
+    const store = h.getStore()
+    const idx = store.findIndex((x) => x.id === e.id)
+    if (idx >= 0) store[idx] = e
+    else store.unshift(e)
+    h.setStore(store)
+  })
+  h.deleteLocalEntry.mockImplementation(async (id: string) => {
+    h.setStore(h.getStore().filter((e) => e.id !== id))
+  })
   h.loadTombstones.mockImplementation(() => [...h.getTombstones()])
   h.saveTombstones.mockImplementation((next: string[]) => h.setTombstones(next))
   h.readEntries.mockResolvedValue([])

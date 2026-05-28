@@ -5,7 +5,14 @@ import {
   updateEntry as sheetsUpdateEntry,
   deleteEntry as sheetsDeleteEntry,
 } from '@/services/googleSheets'
-import { loadLocalEntries, saveLocalEntries, loadTombstones, saveTombstones } from '@/lib/storage'
+import {
+  loadLocalEntries,
+  saveLocalEntries,
+  putLocalEntry,
+  deleteLocalEntry,
+  loadTombstones,
+  saveTombstones,
+} from '@/lib/storage'
 import { getPendingToSync, buildMergedEntries, dedupeById } from '@/services/syncReconciler'
 
 // Shared across every caller in the tab. inFlight tracks ids currently being
@@ -110,16 +117,16 @@ export async function addEntry(
   // entry in localStorage also sees it in-flight and skips it.
   inFlight.add(entry.id)
   try {
-    const withEntry = [entry, ...(await loadLocalEntries())]
-    await saveLocalEntries(withEntry)
+    await putLocalEntry(entry)
+    const withEntry = [entry, ...(await loadLocalEntries()).filter((e) => e.id !== entry.id)]
 
     if (!spreadsheetId || !accessToken) return { entries: withEntry, error: null }
 
     try {
       await appendEntry(spreadsheetId, accessToken, entry)
       const synced = { ...entry, syncStatus: 'synced' as const }
-      const next = (await loadLocalEntries()).map((e) => (e.id === entry.id ? synced : e))
-      await saveLocalEntries(next)
+      await putLocalEntry(synced)
+      const next = withEntry.map((e) => (e.id === entry.id ? synced : e))
       return { entries: next, error: null }
     } catch (err: unknown) {
       return { entries: withEntry, error: toSyncErrorMessage(err, spreadsheetId) }
@@ -134,8 +141,8 @@ export async function updateEntry(
   spreadsheetId: string | null,
   accessToken: string | null
 ): Promise<MutationResult> {
+  await putLocalEntry(updated)
   const next = (await loadLocalEntries()).map((e) => (e.id === updated.id ? updated : e))
-  await saveLocalEntries(next)
 
   if (!spreadsheetId || !accessToken || updated.syncStatus !== 'synced') {
     return { entries: next, error: null }
@@ -157,7 +164,7 @@ export async function deleteEntry(
   const localEntries = await loadLocalEntries()
   const entry = localEntries.find((e) => e.id === entryId)
   const next = localEntries.filter((e) => e.id !== entryId)
-  await saveLocalEntries(next)
+  await deleteLocalEntry(entryId)
 
   // Only synced entries exist in the sheet. Record a tombstone first so the
   // deletion survives across syncs: if the immediate remote delete below fails
