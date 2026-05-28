@@ -217,3 +217,41 @@ test('editing a synced entry updates the sheet row without appending a new one',
   expect(sheet.rows()).toHaveLength(1)
   expect(sheet.rows()[0][5]).toBe('Updated note') // column 5 = note
 })
+
+test('pending local entries and cloud entries merge correctly on first sync with no duplicates on second', async ({ page }) => {
+  const sheet = await setupGoogleMocks(page, { initialRows: [SHEET_SEED_ROW] })
+  await page.goto('/')
+
+  // Create two local entries before syncing
+  await createEntry(page, 'Local first')
+  await createEntry(page, 'Local second')
+
+  await page.getByRole('tab', { name: 'History' }).click()
+  await expect(page.getByText('Local first')).toHaveCount(1)
+  await expect(page.getByText('Local second')).toHaveCount(1)
+  // Cloud entry not yet visible — no sync has run
+  await expect(page.getByText('Entry from the cloud')).toHaveCount(0)
+
+  // First sync: two local entries pushed, one cloud entry pulled down
+  await page.getByRole('button', { name: 'Sync with Google Drive' }).click()
+  await expect(page.getByText('Synced with Google Drive.')).toBeVisible()
+
+  expect(sheet.appendCount()).toBe(2)
+  expect(sheet.rows()).toHaveLength(3) // seed row + 2 appended
+  await expect(page.getByText('Local first')).toHaveCount(1)
+  await expect(page.getByText('Local second')).toHaveCount(1)
+  await expect(page.getByText('Entry from the cloud')).toHaveCount(1)
+
+  // Second sync: all three entries already synced — nothing pushed, nothing duplicated
+  const readReq = page.waitForRequest(
+    (req) => req.url().includes('sheets.googleapis.com') && req.method() === 'GET',
+  )
+  await page.getByRole('button', { name: 'Sync now' }).click()
+  await (await readReq).response()
+
+  expect(sheet.appendCount()).toBe(2) // no new appends
+  expect(sheet.rows()).toHaveLength(3) // no duplicates
+  await expect(page.getByText('Local first')).toHaveCount(1)
+  await expect(page.getByText('Local second')).toHaveCount(1)
+  await expect(page.getByText('Entry from the cloud')).toHaveCount(1)
+})
