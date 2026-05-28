@@ -129,9 +129,20 @@ Every test calls `setupGoogleMocks(page, { initialRows? })` before `page.goto('/
 |---|---|
 | `rows()` | Current in-memory rows (excludes the header) |
 | `appendCount()` | Number of append calls received |
+| `deleteCount()` | Number of `batchUpdate` delete calls received |
 | `deleteRow(id)` | Remove a row by id — simulates remote deletion before the next sync |
 
 Seed rows follow the sheet column order: `[id, date, level1, level2, level3, note, createdAt]`.
+
+### Test helpers and patterns
+
+`createEntry(page, note)` — creates an Angry-level entry with the given note and waits for the
+form auto-reset (1.5 s). Defined at the top of `sync.spec.ts`. Use it to seed pending local
+entries before triggering a sync.
+
+When asserting sheet state after an async mutation (delete, edit), set up `page.waitForRequest()`
+**before** clicking the action, then `await (await req).response()` before checking `sheet.rows()`.
+This ensures the network round-trip completes before the assertion runs.
 
 ### Sync button labels
 
