@@ -124,3 +124,30 @@ test('deleting a synced entry removes it from the sheet immediately', async ({ p
   expect(sheet.rows()).toHaveLength(0)
   expect(sheet.deleteCount()).toBe(1)
 })
+
+test('deleting a pending entry does not append or delete anything in the sheet', async ({ page }) => {
+  const sheet = await setupGoogleMocks(page)
+  await page.goto('/')
+
+  // Create an entry without syncing — it stays pending in local state
+  await createEntry(page, 'Draft entry')
+
+  await page.getByRole('tab', { name: 'History' }).click()
+  await expect(page.getByText('Draft entry')).toHaveCount(1)
+
+  // Delete the pending entry via the edit modal
+  await page.getByText('Draft entry').click()
+  await page.getByRole('button', { name: 'Edit' }).click()
+  await page.getByRole('button', { name: 'Delete' }).click() // shows confirm
+  await page.getByRole('button', { name: 'Delete' }).click() // confirms
+
+  await expect(page.getByText('Draft entry')).toHaveCount(0)
+
+  // Sync: nothing to push, no tombstone to propagate
+  await page.getByRole('button', { name: 'Sync with Google Drive' }).click()
+  await expect(page.getByText('Synced with Google Drive.')).toBeVisible()
+
+  expect(sheet.appendCount()).toBe(0)
+  expect(sheet.deleteCount()).toBe(0)
+  expect(sheet.rows()).toHaveLength(0)
+})
