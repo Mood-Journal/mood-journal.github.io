@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
+import { IDBFactory } from 'fake-indexeddb'
 import {
   loadSheetRef,
   saveSheetRef,
@@ -10,7 +11,14 @@ import {
   saveTombstones,
 } from '../../../src/lib/storage'
 import { encryptString, resetKeyForTesting } from '../../../src/lib/crypto'
+import { openDb, resetDbForTesting, STORE_ENTRIES } from '../../../src/lib/idb'
 import type { MoodEntry } from '../../../src/models/moodEntry'
+
+function resetIdb(): void {
+  ;(globalThis as unknown as { indexedDB: IDBFactory }).indexedDB = new IDBFactory()
+  resetDbForTesting()
+  resetKeyForTesting()
+}
 
 describe('storage — SheetRef', () => {
   beforeEach(() => localStorage.clear())
@@ -58,10 +66,29 @@ const SAMPLE_ENTRY: MoodEntry = {
   syncStatus: 'synced',
 }
 
+async function getRawEntryRecord(id: string): Promise<unknown> {
+  const db = await openDb()
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(STORE_ENTRIES, 'readonly').objectStore(STORE_ENTRIES).get(id)
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+
+async function putRawEntryRecord(id: string, value: string): Promise<void> {
+  const db = await openDb()
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_ENTRIES, 'readwrite')
+    tx.objectStore(STORE_ENTRIES).put(value, id)
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
 describe('storage — LocalEntries', () => {
   beforeEach(() => {
     localStorage.clear()
-    resetKeyForTesting()
+    resetIdb()
   })
 
   it('returns empty array when nothing is stored', async () => {
@@ -80,63 +107,76 @@ describe('storage — LocalEntries', () => {
       { ...SAMPLE_ENTRY, id: 'entry-2', date: '2026-05-25', level2: null, note: null },
     ]
     await saveLocalEntries(entries)
-    expect(await loadLocalEntries()).toEqual(entries)
+    const loaded = await loadLocalEntries()
+    // IDB getAll() doesn't guarantee insertion order, so compare as sets-by-id.
+    expect(loaded).toHaveLength(2)
+    expect(new Map(loaded.map((e) => [e.id, e]))).toEqual(new Map(entries.map((e) => [e.id, e])))
   })
 
-  it('stores data as encrypted ciphertext (not plaintext JSON)', async () => {
+  it('stores each entry as its own encrypted IDB record (not plaintext)', async () => {
     await saveLocalEntries([SAMPLE_ENTRY])
-    const raw = localStorage.getItem('mood-journal-entries:v1')!
-    expect(raw).not.toContain('entry-1')
+    const raw = (await getRawEntryRecord('entry-1')) as string
+    expect(typeof raw).toBe('string')
     expect(raw).not.toContain('Happy')
+    expect(raw).not.toContain('Great day')
+  })
+
+  it('replaces the full set on save (removed entries are not retained)', async () => {
+    await saveLocalEntries([
+      SAMPLE_ENTRY,
+      { ...SAMPLE_ENTRY, id: 'entry-2', date: '2026-05-25' },
+    ])
+    await saveLocalEntries([SAMPLE_ENTRY])
+    const loaded = await loadLocalEntries()
+    expect(loaded.map((e) => e.id)).toEqual(['entry-1'])
   })
 
   it('returns empty array for corrupt stored data', async () => {
-    localStorage.setItem('mood-journal-entries:v1', 'not-valid-base64!!!!')
+    await putRawEntryRecord('entry-1', 'not-valid-base64!!!!')
     expect(await loadLocalEntries()).toEqual([])
   })
 
   it('clearLocalEntries removes stored entries', async () => {
     await saveLocalEntries([SAMPLE_ENTRY])
-    clearLocalEntries()
+    await clearLocalEntries()
     expect(await loadLocalEntries()).toEqual([])
   })
 
   it('migrates entries without syncStatus to pending', async () => {
-    // Simulate data written by an older version that had no syncStatus field
     const legacy = { ...SAMPLE_ENTRY }
     // @ts-expect-error intentionally removing the field to simulate legacy data
     delete legacy.syncStatus
-    const encrypted = await encryptString(JSON.stringify([legacy]))
-    localStorage.setItem('mood-journal-entries:v1', encrypted)
+    const encrypted = await encryptString(JSON.stringify(legacy))
+    await putRawEntryRecord('entry-1', encrypted)
     const loaded = await loadLocalEntries()
+    expect(loaded).toHaveLength(1)
     expect(loaded[0].syncStatus).toBe('pending')
   })
 })
 
 describe('storage — Tombstones', () => {
-  beforeEach(() => localStorage.clear())
-
-  it('returns empty array when none are stored', () => {
-    expect(loadTombstones()).toEqual([])
+  beforeEach(() => {
+    localStorage.clear()
+    resetIdb()
   })
 
-  it('round-trips tombstone ids', () => {
-    saveTombstones(['a', 'b'])
-    expect(loadTombstones()).toEqual(['a', 'b'])
+  it('returns empty array when none are stored', async () => {
+    expect(await loadTombstones()).toEqual([])
   })
 
-  it('deduplicates ids on save', () => {
-    saveTombstones(['a', 'a', 'b'])
-    expect(loadTombstones()).toEqual(['a', 'b'])
+  it('round-trips tombstone ids', async () => {
+    await saveTombstones(['a', 'b'])
+    expect((await loadTombstones()).sort()).toEqual(['a', 'b'])
   })
 
-  it('returns empty array for malformed JSON', () => {
-    localStorage.setItem('mood-journal-tombstones:v1', 'not-json{')
-    expect(loadTombstones()).toEqual([])
+  it('deduplicates ids on save', async () => {
+    await saveTombstones(['a', 'a', 'b'])
+    expect((await loadTombstones()).sort()).toEqual(['a', 'b'])
   })
 
-  it('ignores non-string entries', () => {
-    localStorage.setItem('mood-journal-tombstones:v1', JSON.stringify(['a', 3, null]))
-    expect(loadTombstones()).toEqual(['a'])
+  it('replaces the full set on save', async () => {
+    await saveTombstones(['a', 'b'])
+    await saveTombstones(['c'])
+    expect(await loadTombstones()).toEqual(['c'])
   })
 })

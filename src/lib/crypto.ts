@@ -1,19 +1,10 @@
-const DB_NAME = 'mood-journal-crypto'
-const STORE_NAME = 'keys'
-const KEY_ID = 'entries-key'
+import { openDb, STORE_KEYS } from './idb'
 
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1)
-    req.onupgradeneeded = () => req.result.createObjectStore(STORE_NAME)
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  })
-}
+const KEY_ID = 'entries-key'
 
 function idbGet(db: IDBDatabase, id: string): Promise<CryptoKey | undefined> {
   return new Promise((resolve, reject) => {
-    const req = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(id)
+    const req = db.transaction(STORE_KEYS, 'readonly').objectStore(STORE_KEYS).get(id)
     req.onsuccess = () => resolve(req.result as CryptoKey | undefined)
     req.onerror = () => reject(req.error)
   })
@@ -21,7 +12,7 @@ function idbGet(db: IDBDatabase, id: string): Promise<CryptoKey | undefined> {
 
 function idbPut(db: IDBDatabase, id: string, key: CryptoKey): Promise<void> {
   return new Promise((resolve, reject) => {
-    const req = db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(key, id)
+    const req = db.transaction(STORE_KEYS, 'readwrite').objectStore(STORE_KEYS).put(key, id)
     req.onsuccess = () => resolve()
     req.onerror = () => reject(req.error)
   })

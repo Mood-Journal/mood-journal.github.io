@@ -81,9 +81,10 @@ src/
   hooks/useGoogleAuth.ts    GIS token client; mints a short-lived access token on each user-triggered Sync (no background refresh)
   hooks/useEntries.ts       thin React adapter over syncEngine; optimistic dispatch + consumes Auth + EntriesContext
   context/AuthContext.tsx   auth state machine (idle|authorising|authorised|error)
-  context/EntriesContext.tsx entries state machine; loads from localStorage on mount
+  context/EntriesContext.tsx entries state machine; loads from IndexedDB on mount
   lib/crypto.ts             AES-GCM encrypt/decrypt; key stored in IndexedDB
-  lib/storage.ts            localStorage helpers; encrypted entries + sheet ref
+  lib/storage.ts            sheet ref in localStorage; entries (encrypted, per-record) + tombstones in IndexedDB
+  lib/idb.ts                shared IndexedDB opener (`mood-journal` DB: keys, entries, tombstones stores)
   components/
     SyncBar.tsx             fixed bottom bar: Drive sync button, sheet setup modal
     LogView/                3-step emotion picker + note + date + save

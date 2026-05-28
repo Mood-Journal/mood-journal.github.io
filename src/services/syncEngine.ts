@@ -40,7 +40,7 @@ async function reconcile(spreadsheetId: string, accessToken: string): Promise<Mo
   // snapshot used for the merge comparison.
   const sheetsEntries = dedupeById(await readEntries(spreadsheetId, accessToken))
   const localEntries = await loadLocalEntries()
-  const tombstones = loadTombstones()
+  const tombstones = await loadTombstones()
   const sheetsIds = new Set(sheetsEntries.map((e) => e.id))
 
   const pendingToSync = getPendingToSync(localEntries, sheetsIds, inFlight)
@@ -69,7 +69,7 @@ async function reconcile(spreadsheetId: string, accessToken: string): Promise<Mo
       remainingTombstones.push(id)
     }
   }
-  saveTombstones(remainingTombstones)
+  await saveTombstones(remainingTombstones)
 
   // justSynced: entries just pushed — not yet in sheetsEntries (fetched before push),
   // so they must be injected explicitly, marked synced.
@@ -164,12 +164,12 @@ export async function deleteEntry(
   // or no token is available, the next reconcile retries it rather than
   // resurrecting the row from the sheet.
   if (entry?.syncStatus === 'synced') {
-    saveTombstones([...loadTombstones(), entryId])
+    await saveTombstones([...(await loadTombstones()), entryId])
 
     if (spreadsheetId && accessToken) {
       try {
         await sheetsDeleteEntry(spreadsheetId, accessToken, entryId)
-        saveTombstones(loadTombstones().filter((id) => id !== entryId))
+        await saveTombstones((await loadTombstones()).filter((id) => id !== entryId))
       } catch {
         // Best effort — the tombstone keeps the deletion pending for next sync.
       }
