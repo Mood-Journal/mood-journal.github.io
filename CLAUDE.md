@@ -143,6 +143,17 @@ The SyncBar button label changes with auth state:
 | Authenticated (subsequent syncs) | `Sync now` |
 | Auth error | `Reconnect` |
 
+## README
+
+`README.md` is the human-facing documentation for this project. Keep it accurate:
+
+- Update the **Features** section when user-visible behaviour changes.
+- Update the **Commands** table when scripts in `package.json` are added, removed, or renamed.
+- Update the **Tech Stack** table when a major dependency changes.
+- Update **Google Cloud setup** / **First sync** if the auth or onboarding flow changes.
+
+Do not add internal implementation detail (source layout, test structure, sync internals) — those belong in `CLAUDE.md`.
+
 ## Git commits
 
 Never include AI attribution in commit messages. Do not add `Co-Authored-By`, `Generated-by`, or any other trailer or note that identifies an AI tool as a contributor.
