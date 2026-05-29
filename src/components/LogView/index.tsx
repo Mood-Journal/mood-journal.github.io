@@ -293,7 +293,7 @@ export default function LogView() {
               <Button
                 onClick={() => void handleSave()}
                 loading={isSaving}
-                disabled={!level1 || isSaving}
+                disabled={!level1 || isSaving || saved}
               >
                 Save
               </Button>

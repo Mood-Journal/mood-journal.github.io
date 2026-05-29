@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Button,
@@ -48,6 +48,7 @@ export default function EditModal({ entry, onClose }: EditModalProps) {
   const rootColor = level1 ? resolveColor(level1) : 'violet'
 
   const isSaving = status === 'saving'
+  const submittingRef = useRef(false)
 
   function go(nextStep: Step, dir: 'forward' | 'back') {
     setAnimDir(dir)
@@ -83,7 +84,8 @@ export default function EditModal({ entry, onClose }: EditModalProps) {
   }
 
   async function handleUpdate() {
-    if (!level1) return
+    if (!level1 || submittingRef.current) return
+    submittingRef.current = true
     const updated: MoodEntry = {
       ...entry,
       level1,
@@ -97,6 +99,8 @@ export default function EditModal({ entry, onClose }: EditModalProps) {
   }
 
   async function handleDelete() {
+    if (submittingRef.current) return
+    submittingRef.current = true
     await deleteEntry(entry.id)
     onClose()
   }
