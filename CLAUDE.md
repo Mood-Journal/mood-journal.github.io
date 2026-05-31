@@ -50,7 +50,7 @@ Before committing, all of the following MUST pass:
 | Concern | Choice |
 |---|---|
 | Framework | React 19 + TypeScript, Vite 8 |
-| UI | Mantine v7 (`@mantine/core`, `@mantine/hooks`, `@mantine/form`) |
+| UI | Mantine v9 (`@mantine/core`, `@mantine/hooks`, `@mantine/form`) |
 | Forms | `mantine-form-zod-resolver` + Zod v3 |
 | Auth | Google Identity Services (GIS) token client |
 | Data | Google Sheets REST API |

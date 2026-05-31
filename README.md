@@ -60,7 +60,7 @@ Subsequent syncs use the same spreadsheet and only push changes made since the l
 | Concern | Choice |
 |---|---|
 | Framework | React 19 + TypeScript, Vite 8 |
-| UI | Mantine v7 |
+| UI | Mantine v9 |
 | Auth | Google Identity Services (GIS) token client |
 | Data | Google Sheets REST API |
 | Local storage | IndexedDB (encrypted) + localStorage (sheet reference) |
