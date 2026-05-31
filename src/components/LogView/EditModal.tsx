@@ -200,7 +200,7 @@ export default function EditModal({ entry, onClose }: EditModalProps) {
                 <Stack gap="xs">
                   <Text size="sm">Delete this entry?</Text>
                   <Group gap="xs">
-                    <Button size="xs" color="red" onClick={() => void handleDelete()} loading={isSaving}>
+                    <Button size="xs" color="red" onClick={() => void handleDelete()} loading={isSaving} disabled={isSaving}>
                       Delete
                     </Button>
                     <Button size="xs" variant="subtle" onClick={() => setConfirmDelete(false)}>
