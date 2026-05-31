@@ -95,6 +95,7 @@ tests/
   unit/models/              moodEntry pure function tests
   unit/lib/                 storage and crypto tests
   unit/services/            syncReconciler + syncEngine tests
+  unit/components/          pure helpers backing a component (mirrors src path, e.g. GraphView/aggregate); component behaviour is covered by e2e
   integration/              googleSheets fetch-mock tests
 e2e/
   fixtures/google.ts        setupGoogleMocks + SheetMock — stubs GIS auth, localStorage sheetRef, and sheets.googleapis.com routes
