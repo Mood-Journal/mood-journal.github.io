@@ -1,14 +1,16 @@
 import { useMemo } from 'react'
-import { Alert, Skeleton, Stack, Title, Text } from '@mantine/core'
+import { Alert, List, Paper, Skeleton, Stack, Title, Text } from '@mantine/core'
 import { BarChart } from '@mantine/charts'
 import { useEntries } from '@/hooks/useEntries'
 import { aggregateMoodTrend } from './aggregate'
+import { computeMoodInsights } from './insights'
 
 export default function GraphView() {
   const { entries, status, error } = useEntries()
 
   // Aggregate only when the underlying entries change, not on every render.
   const { data, series } = useMemo(() => aggregateMoodTrend(entries), [entries])
+  const insights = useMemo(() => computeMoodInsights(entries), [entries])
 
   const isInitialLoad = status === 'idle' || status === 'loading'
 
@@ -31,7 +33,22 @@ export default function GraphView() {
       )}
 
       {!isInitialLoad && status !== 'error' && data.length > 0 && (
-        <BarChart h={300} data={data} dataKey="date" type="stacked" series={series} />
+        <>
+          <BarChart h={300} data={data} dataKey="date" type="stacked" series={series} />
+
+          {insights.length > 0 && (
+            <Paper withBorder p="md" radius="md">
+              <Title order={4} mb="xs">
+                What we're noticing
+              </Title>
+              <List spacing="xs" size="sm">
+                {insights.map((insight) => (
+                  <List.Item key={insight}>{insight}</List.Item>
+                ))}
+              </List>
+            </Paper>
+          )}
+        </>
       )}
     </Stack>
   )
