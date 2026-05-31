@@ -1,14 +1,16 @@
-import { useState } from 'react'
 import { Box, Container, Tabs } from '@mantine/core'
 import { AuthProvider } from './context/AuthContext'
 import { EntriesProvider } from './context/EntriesContext'
+import { useTabHash } from './hooks/useTabHash'
 import SyncBar from './components/SyncBar'
 import LogView from './components/LogView'
 import HistoryView from './components/HistoryView'
 import GraphView from './components/GraphView'
 
+const TABS = ['log', 'history', 'trends'] as const
+
 function AppContent() {
-  const [activeTab, setActiveTab] = useState<string>('log')
+  const [activeTab, setActiveTab] = useTabHash(TABS, 'log')
 
   return (
     // pb reserves space for the fixed SyncBar
