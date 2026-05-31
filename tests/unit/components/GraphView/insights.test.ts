@@ -74,7 +74,7 @@ describe('computeMoodInsights', () => {
     expect(insights.some((i) => i.startsWith("Lately you're feeling"))).toBe(false)
   })
 
-  it('omits the shift insight when the dominant feeling is unchanged', () => {
+  it('notes a steady mood when the dominant feeling is unchanged across the span', () => {
     const insights = computeMoodInsights([
       entry({ id: 'a', date: '2026-05-01', level1: 'Happy' }),
       entry({ id: 'b', date: '2026-05-02', level1: 'Happy' }),
@@ -83,5 +83,8 @@ describe('computeMoodInsights', () => {
       entry({ id: 'e', date: '2026-05-04', level1: 'Sad' }),
     ])
     expect(insights.some((i) => i.startsWith("Lately you're feeling"))).toBe(false)
+    expect(insights).toContain(
+      'Your mood has held steady — Happy stayed your most common feeling throughout.'
+    )
   })
 })

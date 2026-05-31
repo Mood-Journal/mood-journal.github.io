@@ -73,8 +73,12 @@ export function computeMoodInsights(entries: MoodEntry[]): string[] {
     const later = entries.filter((e) => !earlierDates.has(e.date))
     const earlierTop = dominant(countByLevel1(earlier))
     const laterTop = dominant(countByLevel1(later))
-    if (earlierTop && laterTop && earlierTop !== laterTop) {
-      insights.push(`Lately you're feeling more ${laterTop} and less ${earlierTop} than before.`)
+    if (earlierTop && laterTop) {
+      insights.push(
+        earlierTop === laterTop
+          ? `Your mood has held steady — ${laterTop} stayed your most common feeling throughout.`
+          : `Lately you're feeling more ${laterTop} and less ${earlierTop} than before.`
+      )
     }
   }
 
