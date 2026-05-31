@@ -39,7 +39,7 @@ export default function GraphView() {
           {insights.length > 0 && (
             <Paper withBorder p="md" radius="md">
               <Title order={4} mb="xs">
-                What we're noticing
+                Insights
               </Title>
               <List spacing="xs" size="sm">
                 {insights.map((insight) => (
