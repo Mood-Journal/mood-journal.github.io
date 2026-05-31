@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",
+    "@mantine/charts": "^9.2.2",
     "@mantine/core": "^9.2.2",
     "@mantine/form": "^9.2.2",
     "@mantine/hooks": "^9.2.2",

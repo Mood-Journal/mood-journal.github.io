@@ -5,6 +5,7 @@ import { EntriesProvider } from './context/EntriesContext'
 import SyncBar from './components/SyncBar'
 import LogView from './components/LogView'
 import HistoryView from './components/HistoryView'
+import GraphView from './components/GraphView'
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState<string>('log')
@@ -17,12 +18,16 @@ function AppContent() {
           <Tabs.List grow mb="md">
             <Tabs.Tab value="log">Log</Tabs.Tab>
             <Tabs.Tab value="history">History</Tabs.Tab>
+            <Tabs.Tab value="trends">Trends</Tabs.Tab>
           </Tabs.List>
           <Tabs.Panel value="log">
             <LogView />
           </Tabs.Panel>
           <Tabs.Panel value="history">
             <HistoryView />
+          </Tabs.Panel>
+          <Tabs.Panel value="trends">
+            <GraphView />
           </Tabs.Panel>
         </Tabs>
       </Container>
